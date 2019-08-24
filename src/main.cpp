@@ -28,6 +28,9 @@ bool ECUConnected = false;
 bool CANConnected = false;
 bool engineRunning = false;
 
+double waterTemp = 0;
+int rpm = 0;
+
 int main() {
   wait_ms(100);
 
@@ -148,7 +151,7 @@ void checkTimers() {
       engineRunning = true;
     }
 
-    if (CANTimer.read_ms() > 1000) {
+    if (CANTimer.read_ms() > 250) {
       led.write(0);
       CANConnected = false;
     } else {
@@ -160,6 +163,38 @@ void checkTimers() {
 
 void coolingControl() {
   while (1) {
+    wait_ms(1000);
+
+    if (waterTemp > 150) {   // Fan is based on water temp
+      if (fan.read() == 0) { // if the pump is off, soft start it
+        for (double i = 0; i < FAN_ACTIVE_DS; i += 0.01) {
+          fan.write(i);
+          wait_ms(20);
+        }
+      } else {
+        fan.write(FAN_ACTIVE_DS); // if the pump is on, keep it on
+      }
+    }
+
+    if (rpm > 1500 && ECUConnected) { // water pump speed is based on RPM
+      if (waterPump.read() == 0) {    // if water pump was off, soft start it
+        for (double i = 0; i < WATERPUMP_ACTIVE_DS; i += 0.01) {
+          waterPump.write(i);
+          wait_ms(20);
+        }
+      } else {
+        waterPump.write(WATERPUMP_ACTIVE_DS);
+      }
+    } else {
+      waterPump.write(0);
+    }
+  }
+
+  // CAN bus disconnect protection (3 seconds)
+  // if CAN bus disconnects, turn on pump and fan at active power level
+  if (!CANConnected && CANTimer.read_ms() > 3000) {
+    waterPump.write(WATERPUMP_ACTIVE_DS);
+    fan.write(FAN_ACTIVE_DS);
   }
 }
 

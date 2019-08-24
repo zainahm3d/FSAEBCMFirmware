@@ -7,9 +7,12 @@
 #define FAN_COOLDOWN_S 30
 #define WATERPUMP_COOLDOWN_S 15
 
+#define WATERPUMP_ACTIVE_DS 0.9
+#define FAN_ACTIVE_DS 0.7
+
 #define PWM_PERIOD_US 100
 
-#define ECU_HEARTBEAT_ID 8 //test val
+#define ECU_HEARTBEAT_ID 8 // test val
 
 // Function Prototypes
 void beepMotors();
