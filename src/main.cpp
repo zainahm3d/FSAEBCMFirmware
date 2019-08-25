@@ -17,9 +17,11 @@ AnalogIn anIn(PA_3);
 
 CAN can0(PA_11, PA_12);
 CANMessage inMsg;
+CANMessage statusMsg;
 
 Thread checkTimerThread(osPriorityLow);
-Thread coolingControlThread;
+Thread coolingControlThread(osPriorityNormal);
+Thread sendStatusThread(osPriorityHigh);
 
 Timer ECUTimer;
 Timer CANTimer;
@@ -48,6 +50,7 @@ int main() {
 
   coolingControlThread.start(coolingControl);
   checkTimerThread.start(checkTimers);
+  sendStatusThread.start(sendStatusMsg);
 
   while (1) {
     if (can0.read(inMsg)) {
@@ -209,4 +212,33 @@ void coolingControl() {
   }
 }
 
-void initCANMessages() {}
+void sendStatusMsg() {
+  while (1) {
+    statusMsg.data[0] = neutral.read();
+    can0.write(statusMsg);
+    wait(100);
+  }
+}
+
+void initCANMessages() {
+  statusMsg.id = 20;
+  statusMsg.len = 8;
+}
+
+void upShift() {
+  sparkCut.write(0);
+  wait_ms(10);
+  upShiftPin.write(1);
+  wait_ms(70);
+  upShiftPin.write(0);
+  sparkCut.write(1);
+}
+
+void downShift() {
+  sparkCut.write(0);
+  wait_ms(10);
+  downShiftPin.write(1);
+  wait_ms(150);
+  downShiftPin.write(0);
+  sparkCut.write(1);
+}

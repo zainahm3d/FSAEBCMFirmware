@@ -29,5 +29,6 @@ void checkTimers();
 void coolingControl();
 void upShift();
 void downShift();
+void sendStatusMsg();
 
 #endif
