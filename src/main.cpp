@@ -5,26 +5,29 @@ DigitalOut led(LED1);
 
 PwmOut fan(PA_10);
 PwmOut waterPump(PA_8);
-PwmOut aux(PA_1);
+PwmOut starter(PA_1);
 
-DigitalOut sparkCut(PA_7);
+DigitalOut sparkCut(PA_0);
 DigitalOut upShiftPin(PB_1);
 DigitalOut downShiftPin(PB_0);
 DigitalOut ECUPower(PB_4);
 
-DigitalIn neutral(PA_0);
+DigitalIn neutral(PA_7);
 AnalogIn anIn(PA_3);
 
 CAN can0(PA_11, PA_12);
 CANMessage inMsg;
 CANMessage statusMsg;
 
-Thread checkTimerThread(osPriorityLow);
-Thread coolingControlThread(osPriorityNormal);
-Thread sendStatusThread(osPriorityHigh);
+Serial ser(USBTX, USBRX);
+
+Thread checkTimerThread;
+Thread coolingControlThread;
+Thread sendStatusThread;
 
 Timer ECUTimer;
 Timer CANTimer;
+Timer starterTimer;
 
 bool ECUConnected = false;
 bool CANConnected = false;
@@ -42,7 +45,11 @@ int main() {
   CANTimer.reset();
   CANTimer.start();
 
+  starterTimer.reset();
+  starterTimer.start();
+
   can0.frequency(CAN_BAUD);
+  ser.baud(SERIAL_BAUD);
 
   initCANMessages();
   initGPIO();
@@ -54,10 +61,32 @@ int main() {
 
   while (1) {
     if (can0.read(inMsg)) {
-      CANTimer.reset();
 
+#ifdef PRINT_CAN
+      ser.printf("ID: %d", inMsg.id);
+      ser.printf(" Data: ");
+      for (int i = 0; i < inMsg.len; i++) {
+        ser.printf("%d ", inMsg.data[i]);
+      }
+      ser.printf("\n");
+#endif
+
+      // Reset watchdog timers
+      CANTimer.reset();
       if (inMsg.id == ECU_HEARTBEAT_ID) {
         ECUTimer.reset();
+      }
+
+      if (inMsg.id == 9) {
+        rpm = inMsg.data[0] * 100; // testing only
+        waterTemp = inMsg.data[1]; // testing only
+      }
+
+      if (inMsg.id == 98) {
+        if (inMsg.data[0] == 91) {
+          starter.write(1);
+          starterTimer.reset();
+        }
       }
     }
   }
@@ -127,11 +156,11 @@ void initGPIO() {
   // PWMs
   waterPump.period_us(PWM_PERIOD_US);
   fan.period_us(PWM_PERIOD_US);
-  aux.period_us(PWM_PERIOD_US);
+  starter.period_us(PWM_PERIOD_US);
 
   waterPump.write(0);
   fan.write(0);
-  aux.write(0);
+  starter.write(0);
 
   // DigitalOuts
   sparkCut.write(1); // Active LOW
@@ -148,6 +177,10 @@ void checkTimers() {
     if (ECUTimer.read_ms() > ECU_TIMEOUT_MS) {
       ECUConnected = false;
       engineRunning = false;
+
+      // if ECU shuts down, this data must be reset
+      rpm = 0;
+      waterTemp = 0;
     } else {
       ECUConnected = true;
       engineRunning = true;
@@ -160,26 +193,19 @@ void checkTimers() {
       led.write(1);
       CANConnected = true;
     }
+
+    if (starterTimer.read_ms() > 100) { // timeout starter motor after 100ms
+      starter.write(0);
+    }
   }
 }
 
 void coolingControl() {
   while (1) {
-    wait_ms(1000);
-
-    if (waterTemp > 150) {   // Fan is based on water temp
-      if (fan.read() == 0) { // if the pump is off, soft start it
-        for (double i = 0; i < FAN_ACTIVE_DC; i += 0.01) {
-          fan.write(i);
-          wait_ms(20);
-        }
-      } else {
-        fan.write(FAN_ACTIVE_DC); // if the pump is on, keep it on
-      }
-    }
+    wait_ms(100);
 
     if (rpm > 1500 && ECUConnected) { // water pump speed is based on RPM
-      if (waterPump.read() == 0) {    // if water pump was off, soft start it
+      if (waterPump.read() == 0) {    // if water pump is off, soft start it
         for (double i = 0; i < WATERPUMP_ACTIVE_DC; i += 0.01) {
           waterPump.write(i);
           wait_ms(20);
@@ -191,23 +217,24 @@ void coolingControl() {
       waterPump.write(0);
     }
 
+    if (waterTemp > 150) {   // Fan is based on water temp
+      if (fan.read() == 0) { // if the fan is off, soft start it
+        for (double i = 0; i < FAN_ACTIVE_DC; i += 0.01) {
+          fan.write(i);
+          wait_ms(20);
+        }
+      } else {
+        fan.write(FAN_ACTIVE_DC); // if the pump is on, keep it on
+      }
+    } else {
+      fan.write(0);
+    }
+
     // CAN bus disconnect protection (3 seconds)
     // if CAN bus disconnects, turn on pump and fan at active power level
     if (CANTimer.read_ms() > 3000) {
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(FAN_ACTIVE_DC);
-    }
-
-    if (CANConnected && !ECUConnected &&
-        waterPump.read() == WATERPUMP_ACTIVE_DC &&
-        fan.read() == FAN_ACTIVE_DC) {
-      fan.write(FAN_COOLDOWN_DC);
-      waterPump.write(WATERPUMP_COOLDOWN_DC);
-
-      wait(FAN_COOLDOWN_S); // assume fan time < pump time
-      fan.write(0);
-      wait(WATERPUMP_COOLDOWN_S - FAN_COOLDOWN_S);
-      waterPump.write(0);
     }
   }
 }
@@ -216,7 +243,17 @@ void sendStatusMsg() {
   while (1) {
     statusMsg.data[0] = neutral.read();
     can0.write(statusMsg);
-    wait(100);
+#ifdef PRINT_STATUS
+    ser.printf("\n");
+    ser.printf("Water Temp: %f\n", waterTemp);
+    ser.printf("RPM: %d\n", rpm);
+    ser.printf("Water Pump DC: %f\n", waterPump.read());
+    ser.printf("Fan DC: %f\n", fan.read());
+    ser.printf("Starter DC: %f\n", starter.read());
+    ser.printf("CAN Status: %d\n", CANConnected);
+    ser.printf("ECU Status: %d\n", ECUConnected);
+#endif
+    wait_ms(100);
   }
 }
 
