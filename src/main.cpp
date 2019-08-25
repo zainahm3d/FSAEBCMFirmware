@@ -18,7 +18,7 @@ AnalogIn anIn(PA_3);
 CAN can0(PA_11, PA_12);
 CANMessage inMsg;
 
-Thread checkTimerThread;
+Thread checkTimerThread(osPriorityLow);
 Thread coolingControlThread;
 
 Timer ECUTimer;
@@ -50,7 +50,6 @@ int main() {
   checkTimerThread.start(checkTimers);
 
   while (1) {
-
     if (can0.read(inMsg)) {
       CANTimer.reset();
 
@@ -143,7 +142,7 @@ void initGPIO() {
 
 void checkTimers() {
   while (1) {
-    if (ECUTimer.read_ms() > 250) {
+    if (ECUTimer.read_ms() > ECU_TIMEOUT_MS) {
       ECUConnected = false;
       engineRunning = false;
     } else {
@@ -151,7 +150,7 @@ void checkTimers() {
       engineRunning = true;
     }
 
-    if (CANTimer.read_ms() > 250) {
+    if (CANTimer.read_ms() > CAN_TIMEOUT_MS) {
       led.write(0);
       CANConnected = false;
     } else {
@@ -167,34 +166,46 @@ void coolingControl() {
 
     if (waterTemp > 150) {   // Fan is based on water temp
       if (fan.read() == 0) { // if the pump is off, soft start it
-        for (double i = 0; i < FAN_ACTIVE_DS; i += 0.01) {
+        for (double i = 0; i < FAN_ACTIVE_DC; i += 0.01) {
           fan.write(i);
           wait_ms(20);
         }
       } else {
-        fan.write(FAN_ACTIVE_DS); // if the pump is on, keep it on
+        fan.write(FAN_ACTIVE_DC); // if the pump is on, keep it on
       }
     }
 
     if (rpm > 1500 && ECUConnected) { // water pump speed is based on RPM
       if (waterPump.read() == 0) {    // if water pump was off, soft start it
-        for (double i = 0; i < WATERPUMP_ACTIVE_DS; i += 0.01) {
+        for (double i = 0; i < WATERPUMP_ACTIVE_DC; i += 0.01) {
           waterPump.write(i);
           wait_ms(20);
         }
       } else {
-        waterPump.write(WATERPUMP_ACTIVE_DS);
+        waterPump.write(WATERPUMP_ACTIVE_DC);
       }
     } else {
       waterPump.write(0);
     }
-  }
 
-  // CAN bus disconnect protection (3 seconds)
-  // if CAN bus disconnects, turn on pump and fan at active power level
-  if (!CANConnected && CANTimer.read_ms() > 3000) {
-    waterPump.write(WATERPUMP_ACTIVE_DS);
-    fan.write(FAN_ACTIVE_DS);
+    // CAN bus disconnect protection (3 seconds)
+    // if CAN bus disconnects, turn on pump and fan at active power level
+    if (CANTimer.read_ms() > 3000) {
+      waterPump.write(WATERPUMP_ACTIVE_DC);
+      fan.write(FAN_ACTIVE_DC);
+    }
+
+    if (CANConnected && !ECUConnected &&
+        waterPump.read() == WATERPUMP_ACTIVE_DC &&
+        fan.read() == FAN_ACTIVE_DC) {
+      fan.write(FAN_COOLDOWN_DC);
+      waterPump.write(WATERPUMP_COOLDOWN_DC);
+
+      wait(FAN_COOLDOWN_S); // assume fan time < pump time
+      fan.write(0);
+      wait(WATERPUMP_COOLDOWN_S - FAN_COOLDOWN_S);
+      waterPump.write(0);
+    }
   }
 }
 

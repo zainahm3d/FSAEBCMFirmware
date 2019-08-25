@@ -2,13 +2,20 @@
 #define BCM_PREFENERENCES
 
 #define CAN_BAUD 250000
-#define ECU_TIMEOUT_MS 500
+#define ECU_TIMEOUT_MS 250
+#define CAN_TIMEOUT_MS 250
 
-#define FAN_COOLDOWN_S 30
-#define WATERPUMP_COOLDOWN_S 15
+// Cooldown times in seconds
+#define FAN_COOLDOWN_S 15
+#define WATERPUMP_COOLDOWN_S 60
 
-#define WATERPUMP_ACTIVE_DS 0.9
-#define FAN_ACTIVE_DS 0.7
+// Active duty cycles
+#define WATERPUMP_ACTIVE_DC 0.9
+#define FAN_ACTIVE_DC 0.7
+
+// Cooldown duty cycles
+#define WATERPUMP_COOLDOWN_DC .5
+#define FAN_COOLDOWN_DC .4
 
 #define PWM_PERIOD_US 100
 
