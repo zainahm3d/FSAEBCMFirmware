@@ -15,11 +15,11 @@ DigitalOut ECUPower(PB_4);
 DigitalIn neutral(PA_7);
 AnalogIn anIn(PA_3);
 
-CAN can0(PA_11, PA_12);
+CAN can0(PA_11, PA_12, CAN_BAUD);
 CANMessage inMsg;
 CANMessage statusMsg;
 
-Serial ser(USBTX, USBRX);
+Serial ser(USBTX, USBRX, SERIAL_BAUD);
 
 Thread checkTimerThread;
 Thread coolingControlThread;
@@ -28,17 +28,17 @@ Thread sendStatusThread;
 Timer ECUTimer;
 Timer CANTimer;
 Timer starterTimer;
+Timer CANResetTimer;
 
 bool ECUConnected = false;
 bool CANConnected = false;
 bool engineRunning = false;
+bool coolDownFlag = false;
 
 double waterTemp = 0;
 int rpm = 0;
 
 int main() {
-  wait_ms(100);
-
   ECUTimer.reset();
   ECUTimer.start();
 
@@ -48,8 +48,8 @@ int main() {
   starterTimer.reset();
   starterTimer.start();
 
-  can0.frequency(CAN_BAUD);
-  ser.baud(SERIAL_BAUD);
+  CANResetTimer.reset();
+  CANResetTimer.start();
 
   initCANMessages();
   initGPIO();
@@ -60,6 +60,15 @@ int main() {
   sendStatusThread.start(sendStatusMsg);
 
   while (1) {
+
+    // recover CAN bus after significant amount of errors,
+    // up to once per second
+    if ((can0.tderror() > 5 || can0.rderror() > 5) &&
+        CANResetTimer.read() > 1) {
+      can0.reset();
+      CANResetTimer.reset();
+    }
+
     if (can0.read(inMsg)) {
 
 #ifdef PRINT_CAN
@@ -86,6 +95,14 @@ int main() {
         if (inMsg.data[0] == 91) {
           starter.write(1);
           starterTimer.reset();
+        }
+      }
+
+      if (inMsg.id == 201) {
+        if (inMsg.data[0] == 0) {
+          upShift();
+        } else if (inMsg.data[0] == 1) {
+          downShift();
         }
       }
     }
@@ -204,37 +221,53 @@ void coolingControl() {
   while (1) {
     wait_ms(100);
 
-    if (rpm > 1500 && ECUConnected) { // water pump speed is based on RPM
-      if (waterPump.read() == 0) {    // if water pump is off, soft start it
-        for (double i = 0; i < WATERPUMP_ACTIVE_DC; i += 0.01) {
-          waterPump.write(i);
-          wait_ms(20);
+    if (!coolDownFlag) {
+      if (rpm > 1500 && ECUConnected) { // water pump speed is based on RPM
+        if (waterPump.read() == 0) {    // if water pump is off, soft start it
+          for (double i = 0; i < WATERPUMP_ACTIVE_DC; i += 0.01) {
+            waterPump.write(i);
+            wait_ms(20);
+          }
+        } else {
+          waterPump.write(WATERPUMP_ACTIVE_DC);
         }
       } else {
+        waterPump.write(0);
+      }
+
+      if (rpm > 1500 && waterTemp > 150 &&
+          ECUConnected) {      // Fan is based on water temp
+        if (fan.read() == 0) { // if the fan is off, soft start it
+          for (double i = 0; i < FAN_ACTIVE_DC; i += 0.01) {
+            fan.write(i);
+            wait_ms(20);
+          }
+        } else {
+          fan.write(FAN_ACTIVE_DC); // if the pump is on, keep it on
+        }
+      } else {
+        fan.write(0);
+      }
+
+      // CAN bus disconnect protection (3 seconds)
+      // if CAN bus disconnects, turn on pump and fan at active power level
+      if (CANTimer.read_ms() > 3000) {
         waterPump.write(WATERPUMP_ACTIVE_DC);
+        fan.write(FAN_ACTIVE_DC);
       }
-    } else {
-      waterPump.write(0);
     }
 
-    if (waterTemp > 150) {   // Fan is based on water temp
-      if (fan.read() == 0) { // if the fan is off, soft start it
-        for (double i = 0; i < FAN_ACTIVE_DC; i += 0.01) {
-          fan.write(i);
-          wait_ms(20);
-        }
-      } else {
-        fan.write(FAN_ACTIVE_DC); // if the pump is on, keep it on
-      }
-    } else {
+    // only perform cooldown if water temp was high to begin with (fan was on)
+    if (!ECUConnected && CANConnected && (fan.read() == FAN_ACTIVE_DC)) {
+      coolDownFlag = true;
+
+      fan.write(FAN_COOLDOWN_DC);
+      waterPump.write(WATERPUMP_COOLDOWN_DC);
+      wait(5);
       fan.write(0);
-    }
+      waterPump.write(0);
 
-    // CAN bus disconnect protection (3 seconds)
-    // if CAN bus disconnects, turn on pump and fan at active power level
-    if (CANTimer.read_ms() > 3000) {
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      fan.write(FAN_ACTIVE_DC);
+      coolDownFlag = false;
     }
   }
 }

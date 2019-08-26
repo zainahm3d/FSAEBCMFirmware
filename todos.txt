@@ -1,0 +1,12 @@
+Todos: 
+add manual fan/pump test overrides
+add timed shutdown period for fan/pump - detect when engine shuts off/ecu disconnect. 
+update CAN frames to match link ECU setup
+
+Done: 
+CAN starter motor control
+Cooling control - fan and pump
+neutral sensor status over CAN
+upshift/downshift routines from 19 car
+CAN bus error recovery
+ - if unrecoverable, go full fan/pump
