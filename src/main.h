@@ -2,16 +2,17 @@
 #define BCM_PREFENERENCES
 
 #define PRINT_STATUS // uncomment - print status
-// #define PRINT_CAN    // uncomment - print CAN
+#define PRINT_CAN    // uncomment - print CAN
 
 #define CAN_BAUD 250000
 #define SERIAL_BAUD 115200
 #define ECU_TIMEOUT_MS 250
 #define CAN_TIMEOUT_MS 250
+#define COOLING_KILL_MS 10000
 
 // Cooldown times in seconds
-#define FAN_COOLDOWN_S 2
-#define WATERPUMP_COOLDOWN_S 5
+#define FAN_COOLDOWN_S 30
+#define WATERPUMP_COOLDOWN_S 60
 
 // Active duty cycles
 #define WATERPUMP_ACTIVE_DC 0.9
