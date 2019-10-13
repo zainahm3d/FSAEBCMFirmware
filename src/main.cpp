@@ -42,7 +42,6 @@ bool haltStateMachine = false;
 
 double waterTemp = 0;
 int rpm = 0;
-
 int state = 0;
 
 int main()
@@ -264,6 +263,7 @@ void checkTimers()
   }
 }
 
+//states for fan and water pump
 void coolingControl()
 {
   while (1)
@@ -334,46 +334,50 @@ void coolingControl()
   }
 }
 
+//updates states based on rpm, waterTemp, if engine is on
 void updateState()
 {
 
-  if (coolingKillFlag)
+  while (1)
   {
-    state = 6; //cooling kill state
-    haltStateMachine = true;
-  }
+    if (coolingKillFlag)
+    {
+      state = 6; //cooling kill state
+      haltStateMachine = true;
+    }
 
-  while (!haltStateMachine)
-  {
-    if (!CANConnected)
+    while (!haltStateMachine)
     {
-      state = 0; //safety state
-    }
-    else if ((waterTemp < 150 && rpm == 0) ||
-             waterTemp < 150 && !ECUConnected && CANConnected)
-    {
-      state = 1; //turnoff state
-    }
-    else if ((waterTemp > 150 && rpm == 0) ||
-             waterTemp > 150 && !ECUConnected && CANConnected)
-    {
-      state = 2; //cooldown state
-    }
-    else if (rpm > 10 && rpm < 1000)
-    {
-      state = 3; //engine crank state
-    }
-    else if (rpm > 1000 && waterTemp < 150)
-    {
-      state = 4; //cold running state
-    }
-    else if (rpm > 1000 && waterTemp > 155)
-    {
-      state = 5; //hot running state
-    }
-    else
-    {
-      //stay in same state
+      if (!CANConnected)
+      {
+        state = 0; //safety state
+      }
+      else if ((waterTemp < 150 && rpm == 0) ||
+               waterTemp < 150 && !ECUConnected && CANConnected)
+      {
+        state = 1; //turnoff state
+      }
+      else if ((waterTemp > 150 && rpm == 0) ||
+               waterTemp > 150 && !ECUConnected && CANConnected)
+      {
+        state = 2; //cooldown state
+      }
+      else if (rpm > 10 && rpm < 1000)
+      {
+        state = 3; //engine crank state
+      }
+      else if (rpm > 1000 && waterTemp < 150)
+      {
+        state = 4; //cold running state
+      }
+      else if (rpm > 1000 && waterTemp > 155)
+      {
+        state = 5; //hot running state
+      }
+      else
+      {
+        //stay in same state
+      }
     }
   }
 }
