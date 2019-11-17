@@ -272,22 +272,23 @@ void coolingControl()
     switch (state)
     {
 
-    case 0: //Safety Mode state
+    case safetyState:
     {
-      fan.write(1);
-      waterPump.write(1);
+      fan.write(FAN_ACTIVE_DC);
+      waterPump.write(WATERPUMP_ACTIVE_DC);
       break;
     }
 
-    case 1: // Engine Turnoff state
+    case engineOffState:
     {
       fan.write(0);
       waterPump.write(0);
       break;
     }
 
-    case 2: // Cooldown state
+    case cooldownState:
     {
+
       fan.write(FAN_COOLDOWN_DC);
       waterPump.write(WATERPUMP_COOLDOWN_DC);
       wait(FAN_COOLDOWN_S);
@@ -297,28 +298,28 @@ void coolingControl()
       break;
     }
 
-    case 3: //Engine Crank state
+    case engineCrankState:
     {
       fan.write(0);
       waterPump.write(0);
       break;
     }
 
-    case 4: //Cold Running state
+    case coldRunningState:
     {
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(0);
       break;
     }
 
-    case 5: //Hot Running state
+    case hotRunningState:
     {
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(FAN_ACTIVE_DC);
       break;
     }
 
-    case 6: //Cooling Kill state
+    case coolingKillState:
     {
       coolingKillTimer.start();
       fan.write(0);
@@ -328,7 +329,9 @@ void coolingControl()
 
     default:
     {
-      //
+      fan.write(FAN_ACTIVE_DC);
+      waterPump.write(WATERPUMP_ACTIVE_DC);
+      break;
     }
     }
   }
@@ -342,7 +345,7 @@ void updateState()
   {
     if (coolingKillFlag)
     {
-      state = 6; //cooling kill state
+      state = coolingKillState;
       haltStateMachine = true;
     }
 
@@ -350,33 +353,29 @@ void updateState()
     {
       if (!CANConnected)
       {
-        state = 0; //safety state
+        state = safetyState;
       }
       else if ((waterTemp < 150 && rpm == 0) ||
                waterTemp < 150 && !ECUConnected && CANConnected)
       {
-        state = 1; //turnoff state
+        state = engineOffState;
       }
       else if ((waterTemp > 150 && rpm == 0) ||
                waterTemp > 150 && !ECUConnected && CANConnected)
       {
-        state = 2; //cooldown state
+        state = cooldownState;
       }
       else if (rpm > 10 && rpm < 1000)
       {
-        state = 3; //engine crank state
+        state = engineCrankState;
       }
       else if (rpm > 1000 && waterTemp < 150)
       {
-        state = 4; //cold running state
+        state = coldRunningState;
       }
       else if (rpm > 1000 && waterTemp > 155)
       {
-        state = 5; //hot running state
-      }
-      else
-      {
-        //stay in same state
+        state = hotRunningState;
       }
     }
   }

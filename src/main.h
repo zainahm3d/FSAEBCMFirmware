@@ -26,6 +26,15 @@
 
 #define ECU_HEARTBEAT_ID 8 // test val
 
+// State Machine states
+#define safetyState 0
+#define engineOffState 1
+#define cooldownState 2
+#define engineCrankState 3
+#define coldRunningState 4
+#define hotRunningState 5
+#define coolingKillState 6
+
 // Function Prototypes
 void beepMotors();
 void initGPIO();
@@ -35,5 +44,5 @@ void coolingControl();
 void upShift();
 void downShift();
 void sendStatusMsg();
-
+void updateState();
 #endif
