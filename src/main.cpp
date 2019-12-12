@@ -44,6 +44,11 @@ double waterTemp = 0;
 int rpm = 0;
 int state = 0;
 
+// Used only for printing purposes
+char stateNames[7][20] = {"safetyState", "engineOffState",
+                          "cooldownState", "engineCrankState",
+                          "coldRunningState", "hotRunningState"};
+
 int main()
 {
   ECUTimer.reset();
@@ -356,12 +361,12 @@ void updateState()
         state = safetyState;
       }
       else if ((waterTemp < 150 && rpm == 0) ||
-               waterTemp < 150 && !ECUConnected && CANConnected)
+               (waterTemp < 150 && !ECUConnected && CANConnected))
       {
         state = engineOffState;
       }
       else if ((waterTemp > 150 && rpm == 0) ||
-               waterTemp > 150 && !ECUConnected && CANConnected)
+               (waterTemp > 150 && !ECUConnected && CANConnected))
       {
         state = cooldownState;
       }
@@ -396,7 +401,7 @@ void sendStatusMsg()
     ser.printf("Starter DC: %f\n", starter.read());
     ser.printf("CAN Status: %d\n", CANConnected);
     ser.printf("ECU Status: %d\n", ECUConnected);
-    ser.printf("State: %d\n", state);
+    ser.printf("State: %d, %s\n", state, stateNames[state]);
 #endif
     wait_ms(100);
   }
