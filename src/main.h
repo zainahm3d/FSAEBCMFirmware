@@ -1,5 +1,5 @@
 #ifndef BCM_PREFERENCES
-#define BCM_PREFENERENCES
+#define BCM_PREFERENCES
 
 #define PRINT_STATUS // uncomment - print status
 #define PRINT_CAN    // uncomment - print CAN
