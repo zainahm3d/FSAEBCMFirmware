@@ -10,9 +10,9 @@
 #define CAN_TIMEOUT_MS 250
 #define COOLING_KILL_MS 10000
 
-// Cooldown times in seconds
-#define FAN_COOLDOWN_S 30
-#define WATERPUMP_COOLDOWN_S 60
+// Cooldown times in milliseconds
+#define FAN_COOLDOWN_MS 30000
+#define WATERPUMP_COOLDOWN_MS 60000
 
 // Active duty cycles
 #define WATERPUMP_ACTIVE_DC 0.9

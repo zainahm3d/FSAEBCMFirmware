@@ -163,7 +163,7 @@ void beepMotors()
 
   waterPump.period_us(200);
   waterPump.write(0);
-  wait_ms(100);
+  ThisThread::sleep_for(100);
 
   for (int i = 0; i < 2; i++)
   {
@@ -174,7 +174,7 @@ void beepMotors()
       waterPump.write(0);
       wait_us(400);
     }
-    wait_ms(20);
+    ThisThread::sleep_for(20);
   }
 
   for (int i = 0; i < 2; i++)
@@ -186,7 +186,7 @@ void beepMotors()
       waterPump.write(0);
       wait_us(150);
     }
-    wait_ms(20);
+    ThisThread::sleep_for(20);
   }
 
   waterPump.period_us(PWM_PERIOD_US);
@@ -196,7 +196,7 @@ void beepMotors()
 
   fan.period_us(200);
   fan.write(0);
-  wait_ms(100);
+  ThisThread::sleep_for(100);
 
   for (int i = 0; i < 2; i++)
   {
@@ -207,7 +207,7 @@ void beepMotors()
       fan.write(0);
       wait_us(150);
     }
-    wait_ms(20);
+    ThisThread::sleep_for(20);
   }
 
   for (int i = 0; i < 2; i++)
@@ -219,7 +219,7 @@ void beepMotors()
       fan.write(0);
       wait_us(400);
     }
-    wait_ms(20);
+    ThisThread::sleep_for(20);
   }
 
   fan.period_us(PWM_PERIOD_US);
@@ -317,9 +317,9 @@ void coolingControl()
 
       fan.write(FAN_COOLDOWN_DC);
       waterPump.write(WATERPUMP_COOLDOWN_DC);
-      wait(FAN_COOLDOWN_S);
+      ThisThread::sleep_for(FAN_COOLDOWN_MS);
       fan.write(0);
-      wait(WATERPUMP_COOLDOWN_S - FAN_COOLDOWN_S);
+      ThisThread::sleep_for(WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS);
       waterPump.write(0);
       state = postCooldownState;
       break;
@@ -425,7 +425,7 @@ void sendStatusMsg()
     ser.printf("ECU Status: %d\n", ECUConnected);
     ser.printf("State: %d, %s\n", state, stateNames[state]);
 #endif
-    wait_ms(100);
+    ThisThread::sleep_for(100);
   }
 }
 
@@ -438,9 +438,9 @@ void initCANMessages()
 void upShift()
 {
   sparkCut.write(0);
-  wait_ms(10);
+  ThisThread::sleep_for(10);
   upShiftPin.write(1);
-  wait_ms(70);
+  ThisThread::sleep_for(70);
   upShiftPin.write(0);
   sparkCut.write(1);
 }
@@ -448,9 +448,9 @@ void upShift()
 void downShift()
 {
   sparkCut.write(0);
-  wait_ms(10);
+  ThisThread::sleep_for(10);
   downShiftPin.write(1);
-  wait_ms(150);
+  ThisThread::sleep_for(150);
   downShiftPin.write(0);
   sparkCut.write(1);
 }
@@ -458,9 +458,9 @@ void downShift()
 void halfShift()
 {
   upShiftPin.write(1);
-  wait_ms(7);
+  ThisThread::sleep_for(7);
   downShiftPin.write(1);
-  wait_ms(150);
+  ThisThread::sleep_for(150);
   upShiftPin.write(0);
   downShiftPin.write(0);
 }
