@@ -46,9 +46,11 @@ int rpm = 0;
 int state = 0;
 
 // Used only for printing purposes
+#ifdef PRINT_STATUS
 char stateNames[7][20] = {"safetyState", "engineOffState",
                           "cooldownState", "engineCrankState",
                           "coldRunningState", "hotRunningState"};
+#endif
 
 int main()
 {
@@ -437,6 +439,11 @@ void initCANMessages()
 
 void upShift()
 {
+
+#ifdef PRINT_STATUS
+  ser.printf("\n---------- UPSHIFT ----------\n");
+#endif
+
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   upShiftPin.write(1);
@@ -447,6 +454,11 @@ void upShift()
 
 void downShift()
 {
+
+#ifdef PRINT_STATUS
+  ser.printf("\n---------- DOWNSHIFT ----------\n");
+#endif
+
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   downShiftPin.write(1);
@@ -457,6 +469,11 @@ void downShift()
 
 void halfShift()
 {
+
+#ifdef PRINT_STATUS
+  ser.printf("\n---------- HALFSHIFT ----------\n");
+#endif
+
   upShiftPin.write(1);
   ThisThread::sleep_for(7);
   downShiftPin.write(1);
