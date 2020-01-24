@@ -2,10 +2,10 @@
 #define BCM_PREFERENCES
 
 #define PRINT_STATUS // uncomment - print status
-#define PRINT_CAN    // uncomment - print CAN
+// #define PRINT_CAN    // uncomment - print CAN
 
 #define CAN_BAUD 250000
-#define SERIAL_BAUD 115200
+#define SERIAL_BAUD 921600
 #define ECU_TIMEOUT_MS 250
 #define CAN_TIMEOUT_MS 250
 #define COOLING_KILL_MS 10000

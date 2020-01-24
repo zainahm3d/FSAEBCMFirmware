@@ -33,17 +33,17 @@ Timer starterTimer;
 Timer CANResetTimer;
 Timer coolingKillTimer;
 
-bool ECUConnected = false;
-bool CANConnected = false;
-bool engineRunning = false;
-bool coolDownFlag = false;
-bool coolingKillFlag = false;
-bool haltStateMachine = false;
+volatile bool CANConnected = false;
+volatile bool engineRunning = false;
+volatile bool ECUConnected = false;
+volatile bool coolDownFlag = false;
+volatile bool coolingKillFlag = false;
+volatile bool haltStateMachine = false;
 
-double waterTemp = 0;
-double batteryVoltage = 0;
-int rpm = 0;
-int state = 0;
+volatile double waterTemp = 0;
+volatile double batteryVoltage = 0;
+volatile int rpm = 0;
+volatile int state = 0;
 
 // Used only for printing purposes
 #ifdef PRINT_STATUS
@@ -426,6 +426,8 @@ void sendStatusMsg()
     ser.printf("CAN Status:\t %d\n", CANConnected);
     ser.printf("ECU Status:\t %d\n", ECUConnected);
     ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
+    ser.printf("SMHalted:\t %d\n", haltStateMachine);
+    ser.printf("killCooling:\t %d\n", coolingKillFlag);
 #endif
     ThisThread::sleep_for(100);
   }
