@@ -34,6 +34,7 @@
 #define coldRunningState 4
 #define hotRunningState 5
 #define coolingKillState 6
+#define postCooldownState 7
 
 // Function Prototypes
 void beepMotors();
@@ -43,6 +44,7 @@ void checkTimers();
 void coolingControl();
 void upShift();
 void downShift();
+void halfShift();
 void sendStatusMsg();
 void updateState();
 #endif

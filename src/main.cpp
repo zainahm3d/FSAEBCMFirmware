@@ -41,6 +41,7 @@ bool coolingKillFlag = false;
 bool haltStateMachine = false;
 
 double waterTemp = 0;
+double batteryVoltage = 0;
 int rpm = 0;
 int state = 0;
 
@@ -119,20 +120,40 @@ int main()
         }
       }
 
-      if (inMsg.id == 201)
+      // Steering wheel ID is 0
+      if (inMsg.id == 0)
       {
-        if (inMsg.data[0] == 0)
+        if (inMsg.data[0] == 10)
         {
           upShift();
         }
-        else if (inMsg.data[0] == 1)
+        else if (inMsg.data[0] == 11)
         {
           downShift();
         }
+        else if (inMsg.data[0] == 14)
+        {
+          // half shift
+        }
+      }
+
+      // Read in ECU frames
+      // PE1
+      if (inMsg.id == 0x0CFFF048)
+      {
+        rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
+      }
+      // PE6
+      else if (inMsg.id == 0x0CFFF548)
+      {
+        double newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
+        if (newTemp > 32767)
+        {
+          newTemp = newTemp - 65536;
+        }
+        waterTemp = newTemp / 10;
       }
     }
-
-    //hi
   }
 }
 
@@ -300,6 +321,7 @@ void coolingControl()
       fan.write(0);
       wait(WATERPUMP_COOLDOWN_S - FAN_COOLDOWN_S);
       waterPump.write(0);
+      state = postCooldownState;
       break;
     }
 
@@ -431,4 +453,14 @@ void downShift()
   wait_ms(150);
   downShiftPin.write(0);
   sparkCut.write(1);
+}
+
+void halfShift()
+{
+  upShiftPin.write(1);
+  wait_ms(7);
+  downShiftPin.write(1);
+  wait_ms(150);
+  upShiftPin.write(0);
+  downShiftPin.write(0);
 }
