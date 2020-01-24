@@ -416,14 +416,14 @@ void sendStatusMsg()
     can0.write(statusMsg);
 #ifdef PRINT_STATUS
     ser.printf("\n");
-    ser.printf("Water Temp: %f\n", waterTemp);
-    ser.printf("RPM: %d\n", rpm);
-    ser.printf("Water Pump DC: %f\n", waterPump.read());
-    ser.printf("Fan DC: %f\n", fan.read());
-    ser.printf("Starter DC: %f\n", starter.read());
-    ser.printf("CAN Status: %d\n", CANConnected);
-    ser.printf("ECU Status: %d\n", ECUConnected);
-    ser.printf("State: %d, %s\n", state, stateNames[state]);
+    ser.printf("Water Temp:\t %f\n", waterTemp);
+    ser.printf("RPM:\t\t %d\n", rpm);
+    ser.printf("Water Pump DC:\t %f\n", waterPump.read());
+    ser.printf("Fan DC:\t\t %f\n", fan.read());
+    ser.printf("Starter DC:\t %f\n", starter.read());
+    ser.printf("CAN Status:\t %d\n", CANConnected);
+    ser.printf("ECU Status:\t %d\n", ECUConnected);
+    ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
 #endif
     ThisThread::sleep_for(100);
   }
