@@ -34,7 +34,6 @@
 #define coldRunningState 4
 #define hotRunningState 5
 #define coolingKillState 6
-#define postCooldownState 7
 
 // Function Prototypes
 void beepMotors();

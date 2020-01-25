@@ -39,9 +39,10 @@ volatile bool ECUConnected = false;
 volatile bool coolDownFlag = false;
 volatile bool coolingKillFlag = false;
 volatile bool haltStateMachine = false;
+volatile bool coolingDone = false;
 
-volatile double waterTemp = 0;
-volatile double batteryVoltage = 0;
+volatile double waterTemp = 0.0;
+volatile double batteryVoltage = 0.0;
 volatile int rpm = 0;
 volatile int state = 0;
 
@@ -107,12 +108,6 @@ int main()
         ECUTimer.reset();
       }
 
-      if (inMsg.id == 9)
-      {
-        rpm = inMsg.data[0] * 100; // testing only
-        waterTemp = inMsg.data[1]; // testing only
-      }
-
       if (inMsg.id == 98)
       {
         if (inMsg.data[0] == 91)
@@ -144,6 +139,10 @@ int main()
       if (inMsg.id == 0x0CFFF048)
       {
         rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
+        if (rpm > 0)
+        {
+          coolingDone = false;
+        }
       }
       // PE6
       else if (inMsg.id == 0x0CFFF548)
@@ -304,6 +303,7 @@ void coolingControl()
     {
       fan.write(FAN_ACTIVE_DC);
       waterPump.write(WATERPUMP_ACTIVE_DC);
+      coolingDone = false;
       break;
     }
 
@@ -311,6 +311,7 @@ void coolingControl()
     {
       fan.write(0);
       waterPump.write(0);
+
       break;
     }
 
@@ -323,7 +324,9 @@ void coolingControl()
       fan.write(0);
       ThisThread::sleep_for(WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS);
       waterPump.write(0);
-      state = postCooldownState;
+      state = engineOffState;
+      coolingDone = true;
+
       break;
     }
 
@@ -331,6 +334,7 @@ void coolingControl()
     {
       fan.write(0);
       waterPump.write(0);
+      coolingDone = false;
       break;
     }
 
@@ -338,6 +342,7 @@ void coolingControl()
     {
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(0);
+      coolingDone = false;
       break;
     }
 
@@ -345,6 +350,7 @@ void coolingControl()
     {
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(FAN_ACTIVE_DC);
+      coolingDone = false;
       break;
     }
 
@@ -353,6 +359,7 @@ void coolingControl()
       coolingKillTimer.start();
       fan.write(0);
       waterPump.write(0);
+      coolingDone = false;
       break;
     }
 
@@ -385,7 +392,8 @@ void updateState()
         state = safetyState;
       }
       else if ((waterTemp < 150 && rpm == 0) ||
-               (waterTemp < 150 && !ECUConnected && CANConnected))
+               (waterTemp < 150 && !ECUConnected && CANConnected) ||
+               coolingDone)
       {
         state = engineOffState;
       }
