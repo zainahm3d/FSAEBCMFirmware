@@ -12,6 +12,7 @@ DigitalOut sparkCut(PA_0);
 DigitalOut upShiftPin(PB_1);
 DigitalOut downShiftPin(PB_0);
 DigitalOut ECUPower(PB_4);
+DigitalOut ETCEnable(PA_5);
 
 DigitalIn neutral(PA_7);
 AnalogIn anIn(PA_3);
@@ -41,8 +42,8 @@ volatile bool coolingKillFlag = false;
 volatile bool haltStateMachine = false;
 volatile bool coolingDone = false;
 
-volatile double waterTemp = 0.0;
-volatile double batteryVoltage = 0.0;
+volatile float waterTemp = 0.0;
+volatile float batteryVoltage = 0.0;
 volatile int rpm = 0;
 volatile int state = 0;
 
@@ -130,7 +131,7 @@ int main()
         }
         else if (inMsg.data[0] == 14)
         {
-          // half shift
+          halfShift();
         }
       }
 
@@ -147,12 +148,12 @@ int main()
       // PE6
       else if (inMsg.id == 0x0CFFF548)
       {
-        double newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
+        uint16_t newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
         if (newTemp > 32767)
         {
           newTemp = newTemp - 65536;
         }
-        waterTemp = newTemp / 10;
+        waterTemp = ((newTemp / 10.0) * 1.8) + 32;
       }
     }
   }
@@ -243,6 +244,7 @@ void initGPIO()
   upShiftPin.write(0);
   downShiftPin.write(0);
   ECUPower.write(1);
+  ETCEnable.write(1); // TESTING ONLY
 
   // DigitalIns
   neutral.mode(PullUp);
@@ -391,26 +393,26 @@ void updateState()
       {
         state = safetyState;
       }
-      else if ((waterTemp < 150 && rpm == 0) ||
-               (waterTemp < 150 && !ECUConnected && CANConnected) ||
+      else if ((waterTemp < ENGINE_WARM_F && rpm == 0) ||
+               (waterTemp < ENGINE_WARM_F && !ECUConnected && CANConnected) ||
                coolingDone)
       {
         state = engineOffState;
       }
-      else if ((waterTemp > 150 && rpm == 0) ||
-               (waterTemp > 150 && !ECUConnected && CANConnected))
+      else if ((waterTemp > ENGINE_WARM_F && rpm == 0) ||
+               (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected))
       {
         state = cooldownState;
       }
-      else if (rpm > 10 && rpm < 1000)
+      else if (rpm > 10 && rpm < 1200 && waterTemp < ENGINE_WARM_F)
       {
         state = engineCrankState;
       }
-      else if (rpm > 1000 && waterTemp < 150)
+      else if (rpm > 1000 && waterTemp < ENGINE_WARM_F)
       {
         state = coldRunningState;
       }
-      else if (rpm > 1000 && waterTemp > 155)
+      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F + 5)
       {
         state = hotRunningState;
       }
@@ -423,6 +425,7 @@ void sendStatusMsg()
   while (1)
   {
     statusMsg.data[0] = neutral.read();
+    statusMsg.data[1] = ETCEnable.read();
     can0.write(statusMsg);
 #ifdef PRINT_STATUS
     ser.printf("\n");
@@ -436,6 +439,7 @@ void sendStatusMsg()
     ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
     ser.printf("SMHalted:\t %d\n", haltStateMachine);
     ser.printf("killCooling:\t %d\n", coolingKillFlag);
+    ser.printf("ETCEnabled:\t %d\n", ETCEnable.read());
 #endif
     ThisThread::sleep_for(100);
   }

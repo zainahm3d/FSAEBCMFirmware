@@ -11,8 +11,8 @@
 #define COOLING_KILL_MS 10000
 
 // Cooldown times in milliseconds
-#define FAN_COOLDOWN_MS 30000
-#define WATERPUMP_COOLDOWN_MS 60000
+#define FAN_COOLDOWN_MS 10000
+#define WATERPUMP_COOLDOWN_MS 12000
 
 // Active duty cycles
 #define WATERPUMP_ACTIVE_DC 0.9
@@ -24,7 +24,10 @@
 
 #define PWM_PERIOD_US 100
 
-#define ECU_HEARTBEAT_ID 8 // test val
+#define ECU_HEARTBEAT_ID 0x0CFFF548
+
+// Paramaters
+#define ENGINE_WARM_F 90 // Fahrenheit
 
 // State Machine states
 #define safetyState 0
