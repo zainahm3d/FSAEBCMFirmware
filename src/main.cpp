@@ -41,6 +41,7 @@ volatile bool coolDownFlag = false;
 volatile bool coolingKillFlag = false;
 volatile bool haltStateMachine = false;
 volatile bool coolingDone = false;
+volatile bool engineWasRunning = false;
 
 volatile float waterTemp = 0.0;
 volatile float batteryVoltage = 0.0;
@@ -303,6 +304,7 @@ void coolingControl()
 
     case safetyState:
     {
+      engineWasRunning = false;
       fan.write(FAN_ACTIVE_DC);
       waterPump.write(WATERPUMP_ACTIVE_DC);
       coolingDone = false;
@@ -322,9 +324,35 @@ void coolingControl()
 
       fan.write(FAN_COOLDOWN_DC);
       waterPump.write(WATERPUMP_COOLDOWN_DC);
-      ThisThread::sleep_for(FAN_COOLDOWN_MS);
+
+      for (int i = 0; i < (FAN_COOLDOWN_MS / 1000); i++)
+      {
+
+        if (rpm == 0)
+        {
+          ThisThread::sleep_for(1000);
+        }
+        else
+        {
+          break;
+        }
+      }
+
       fan.write(0);
-      ThisThread::sleep_for(WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS);
+
+      for (int i = 0; i < ((WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS) / 1000); i++)
+      {
+
+        if (rpm == 0)
+        {
+          ThisThread::sleep_for(1000);
+        }
+        else
+        {
+          break;
+        }
+      }
+
       waterPump.write(0);
       state = engineOffState;
       coolingDone = true;
@@ -337,6 +365,7 @@ void coolingControl()
       fan.write(0);
       waterPump.write(0);
       coolingDone = false;
+      engineWasRunning = true;
       break;
     }
 
@@ -345,6 +374,7 @@ void coolingControl()
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(0);
       coolingDone = false;
+      engineWasRunning = true;
       break;
     }
 
@@ -353,6 +383,7 @@ void coolingControl()
       waterPump.write(WATERPUMP_ACTIVE_DC);
       fan.write(FAN_ACTIVE_DC);
       coolingDone = false;
+      engineWasRunning = true;
       break;
     }
 
@@ -381,6 +412,11 @@ void updateState()
 
   while (1)
   {
+    if (rpm == 0)
+    {
+      engineWasRunning = false;
+    }
+
     if (coolingKillFlag)
     {
       state = coolingKillState;
@@ -393,18 +429,21 @@ void updateState()
       {
         state = safetyState;
       }
-      else if ((waterTemp < ENGINE_WARM_F && rpm == 0) ||
-               (waterTemp < ENGINE_WARM_F && !ECUConnected && CANConnected) ||
-               coolingDone)
-      {
-        state = engineOffState;
-      }
       else if ((waterTemp > ENGINE_WARM_F && rpm == 0) ||
                (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected))
+
       {
         state = cooldownState;
       }
-      else if (rpm > 10 && rpm < 1200 && waterTemp < ENGINE_WARM_F)
+
+      else if ((!engineWasRunning && rpm == 0) ||
+               (waterTemp < ENGINE_WARM_F && !ECUConnected && CANConnected) ||
+               coolingDone || (state == engineCrankState && rpm == 0))
+      {
+        state = engineOffState;
+      }
+
+      else if (rpm > 10 && rpm <= 1000 && waterTemp < ENGINE_WARM_F)
       {
         state = engineCrankState;
       }
@@ -412,9 +451,13 @@ void updateState()
       {
         state = coldRunningState;
       }
-      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F + 5)
+      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F + 1)
       {
         state = hotRunningState;
+      }
+      else
+      {
+        state = safetyState;
       }
     }
   }

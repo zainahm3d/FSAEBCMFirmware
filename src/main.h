@@ -12,7 +12,7 @@
 
 // Cooldown times in milliseconds
 #define FAN_COOLDOWN_MS 10000
-#define WATERPUMP_COOLDOWN_MS 12000
+#define WATERPUMP_COOLDOWN_MS 20000
 
 // Active duty cycles
 #define WATERPUMP_ACTIVE_DC 0.9
