@@ -354,10 +354,7 @@ void coolingControl()
       }
 
       waterPump.write(0);
-      state = engineOffState;
       coolingDone = true;
-
-      break;
     }
 
     case engineCrankState:
@@ -457,7 +454,7 @@ void updateState()
       }
       else
       {
-        state = safetyState;
+        state = engineOffState;
       }
     }
   }
