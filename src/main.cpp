@@ -50,9 +50,8 @@ volatile int state = 0;
 
 // Used only for printing purposes
 #ifdef PRINT_STATUS
-char stateNames[7][20] = {"safetyState", "engineOffState",
-                          "cooldownState", "engineCrankState",
-                          "coldRunningState", "hotRunningState"};
+char stateNames[6][20] = {"safetyState", "engineOffState",
+                          "cooldownState", "coldRunningState", "hotRunningState"};
 #endif
 
 int main()
@@ -334,7 +333,7 @@ void coolingControl()
         }
         else
         {
-          break;
+          i = (FAN_COOLDOWN_MS) / 1000;
         }
       }
 
@@ -349,20 +348,13 @@ void coolingControl()
         }
         else
         {
-          break;
+          i = (WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS) / 1000;
         }
       }
 
       waterPump.write(0);
       coolingDone = true;
-    }
-
-    case engineCrankState:
-    {
-      fan.write(0);
-      waterPump.write(0);
-      coolingDone = false;
-      engineWasRunning = true;
+      state = engineOffState;
       break;
     }
 
@@ -409,10 +401,10 @@ void updateState()
 
   while (1)
   {
-    if (rpm == 0)
-    {
-      engineWasRunning = false;
-    }
+    // if (rpm == 0)
+    // {
+    //   engineWasRunning = false;
+    // }
 
     if (coolingKillFlag)
     {
@@ -426,35 +418,33 @@ void updateState()
       {
         state = safetyState;
       }
-      else if ((waterTemp > ENGINE_WARM_F && rpm == 0) ||
-               (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected))
+      else if (((waterTemp > ENGINE_WARM_F && rpm == 0) ||
+                (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected)) &&
+               engineWasRunning && !coolingDone)
 
       {
         state = cooldownState;
       }
 
       else if ((!engineWasRunning && rpm == 0) ||
-               (waterTemp < ENGINE_WARM_F && !ECUConnected && CANConnected) ||
-               coolingDone || (state == engineCrankState && rpm == 0))
+               (!ECUConnected && CANConnected) ||
+               coolingDone)
       {
         state = engineOffState;
       }
 
-      else if (rpm > 10 && rpm <= 1000 && waterTemp < ENGINE_WARM_F)
-      {
-        state = engineCrankState;
-      }
-      else if (rpm > 1000 && waterTemp < ENGINE_WARM_F)
+      else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F)
       {
         state = coldRunningState;
       }
-      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F + 1)
+
+      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F)
       {
         state = hotRunningState;
       }
       else
       {
-        state = engineOffState;
+        state = coldRunningState;
       }
     }
   }
