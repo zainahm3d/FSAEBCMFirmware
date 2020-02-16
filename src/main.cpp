@@ -8,13 +8,13 @@ PwmOut fan(PA_10);
 PwmOut waterPump(PA_8);
 PwmOut starter(PA_1);
 
-DigitalOut sparkCut(PA_0);
+DigitalOut sparkCut(PA_7);
 DigitalOut upShiftPin(PB_1);
 DigitalOut downShiftPin(PB_0);
 DigitalOut ECUPower(PB_4);
 DigitalOut ETCEnable(PA_5);
 
-DigitalIn neutral(PA_7);
+DigitalIn neutral(PA_0);
 AnalogIn anIn(PA_3);
 
 CAN can0(PA_11, PA_12, CAN_BAUD);
@@ -153,7 +153,8 @@ int main()
         {
           newTemp = newTemp - 65536;
         }
-        waterTemp = ((newTemp / 10.0) * 1.8) + 32;
+        waterTemp = ((newTemp / 10.0) * 1.8) + 32; // For LINK FURY
+        // waterTemp = newTemp; // FOR PE3
       }
     }
   }
@@ -477,7 +478,8 @@ void sendStatusMsg()
 
 void initCANMessages()
 {
-  statusMsg.id = 20;
+  statusMsg.format = CANExtended;
+  statusMsg.id = 6;
   statusMsg.len = 8;
 }
 
