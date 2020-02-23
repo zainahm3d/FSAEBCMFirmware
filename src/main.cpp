@@ -154,7 +154,7 @@ int main()
           newTemp = newTemp - 65536;
         }
         waterTemp = ((newTemp / 10.0) * 1.8) + 32; // For LINK FURY
-        // waterTemp = newTemp; // FOR PE3
+        // waterTemp = newTemp / 10; // FOR PE3
       }
     }
   }
