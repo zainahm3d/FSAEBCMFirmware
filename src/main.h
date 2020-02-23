@@ -24,7 +24,7 @@
 
 #define PWM_PERIOD_US 100
 
-#define ECU_HEARTBEAT_ID 0x0CFFF548
+#define ECU_HEARTBEAT_ID 0x0CFFF048
 
 // Paramaters
 #define ENGINE_WARM_F 100 // Fahrenheit
