@@ -8,13 +8,13 @@ PwmOut fan(PA_10);
 PwmOut waterPump(PA_8);
 PwmOut starter(PA_1);
 
-DigitalOut sparkCut(PA_7);
+DigitalOut sparkCut(PA_0);
 DigitalOut upShiftPin(PB_1);
 DigitalOut downShiftPin(PB_0);
 DigitalOut ECUPower(PB_4);
 DigitalOut ETCEnable(PA_5);
 
-DigitalIn neutral(PA_0);
+DigitalIn neutral(PA_7);
 AnalogIn anIn(PA_3);
 
 CAN can0(PA_11, PA_12, CAN_BAUD);
@@ -27,6 +27,7 @@ Thread checkTimerThread;
 Thread coolingControlThread;
 Thread sendStatusThread;
 Thread updateStateThread;
+Thread checkGasThread;
 
 Timer ECUTimer;
 Timer CANTimer;
@@ -47,6 +48,10 @@ volatile float waterTemp = 0.0;
 volatile float batteryVoltage = 0.0;
 volatile int rpm = 0;
 volatile int state = 0;
+volatile int gas1 = 0;
+volatile int gas2 = 0;
+volatile int throttle1 = 0;
+volatile int throttle2 = 0;
 
 // Used only for printing purposes
 #ifdef PRINT_STATUS
@@ -451,6 +456,19 @@ void updateState()
   }
 }
 
+void checkGasAndThrottle()
+{
+  ThisThread::sleep_for(3000);
+  while (1)
+  {
+
+    if (gas1 > (throttle1 * 1.1) || gas1 < (throttle1 * 0.9))
+    {
+      ETCEnable.write(0);
+    }
+  }
+}
+
 void sendStatusMsg()
 {
   while (1)
@@ -478,8 +496,7 @@ void sendStatusMsg()
 
 void initCANMessages()
 {
-  statusMsg.format = CANExtended;
-  statusMsg.id = 6;
+  statusMsg.id = 20;
   statusMsg.len = 8;
 }
 
