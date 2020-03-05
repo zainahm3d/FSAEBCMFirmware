@@ -266,43 +266,40 @@ void initGPIO()
 
 void checkTimers()
 {
-  while (1)
+  if (ECUTimer.read_ms() > ECU_TIMEOUT_MS)
   {
-    if (ECUTimer.read_ms() > ECU_TIMEOUT_MS)
-    {
-      ECUConnected = false;
-      engineRunning = false;
+    ECUConnected = false;
+    engineRunning = false;
 
-      // if ECU shuts down, this data must be reset
-      rpm = 0;
-      waterTemp = 0;
-    }
-    else
-    {
-      ECUConnected = true;
-      engineRunning = true;
-    }
+    // if ECU shuts down, this data must be reset
+    rpm = 0;
+    waterTemp = 0;
+  }
+  else
+  {
+    ECUConnected = true;
+    engineRunning = true;
+  }
 
-    if (CANTimer.read_ms() > CAN_TIMEOUT_MS)
-    {
-      led.write(0);
-      CANConnected = false;
-    }
-    else
-    {
-      led.write(1);
-      CANConnected = true;
-    }
+  if (CANTimer.read_ms() > CAN_TIMEOUT_MS)
+  {
+    led.write(0);
+    CANConnected = false;
+  }
+  else
+  {
+    led.write(1);
+    CANConnected = true;
+  }
 
-    if (starterTimer.read_ms() > 100)
-    { // timeout starter motor after 100ms
-      starter.write(0);
-    }
+  if (starterTimer.read_ms() > 100)
+  { // timeout starter motor after 100ms
+    starter.write(0);
+  }
 
-    if (coolingKillTimer.read_ms() > COOLING_KILL_MS)
-    {
-      haltStateMachine = false;
-    }
+  if (coolingKillTimer.read_ms() > COOLING_KILL_MS)
+  {
+    haltStateMachine = false;
   }
 }
 
@@ -345,7 +342,7 @@ void updateState()
         state = engineOffState;
       }
 
-      else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F - ENGINE_TEMP_DEADBAND)
+      else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F)
       {
         state = coldRunningState;
       }
@@ -356,8 +353,7 @@ void updateState()
       }
       else
       {
-        state = hotRunningState;
-        // When temp is in gap between hot and cold
+        state = coldRunningState;
       }
     }
 
