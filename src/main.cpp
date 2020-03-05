@@ -23,11 +23,8 @@ CANMessage statusMsg;
 
 Serial ser(USBTX, USBRX, SERIAL_BAUD);
 
-Thread checkTimerThread;
-Thread coolingControlThread;
 Thread sendStatusThread;
 Thread updateStateThread;
-Thread checkGasThread;
 
 Timer ECUTimer;
 Timer CANTimer;
@@ -48,10 +45,12 @@ volatile float waterTemp = 0.0;
 volatile float batteryVoltage = 0.0;
 volatile int rpm = 0;
 volatile int state = 0;
-volatile int gas1 = 0;
-volatile int gas2 = 0;
-volatile int throttle1 = 0;
-volatile int throttle2 = 0;
+
+// For EThrotttle error checks
+volatile int APPS1 = 0;
+volatile int APPS2 = 0;
+volatile int TPS1 = 0;
+volatile int TPS2 = 0;
 
 // Used only for printing purposes
 #ifdef PRINT_STATUS
@@ -77,13 +76,19 @@ int main()
   initGPIO();
   beepMotors();
 
-  coolingControlThread.start(coolingControl);
-  checkTimerThread.start(checkTimers);
   sendStatusThread.start(sendStatusMsg);
   updateStateThread.start(updateState);
 
+  // osThreadSetPriority(osThreadGetId(), osPriorityNormal1);
+
+  // Watchdog &watchdog = Watchdog::get_instance();
+  // watchdog.start(5000);
+
   while (1)
   {
+
+    // watchdog.kick();
+    checkTimers();
 
     // recover CAN bus after significant amount of errors,
     // up to once per second
@@ -158,8 +163,11 @@ int main()
         {
           newTemp = newTemp - 65536;
         }
-        waterTemp = ((newTemp / 10.0) * 1.8) + 32; // For LINK FURY
-        // waterTemp = newTemp / 10; // FOR PE3
+#ifdef FURY
+        waterTemp = ((newTemp / 10.0) * 1.8) + 32;
+#else
+        waterTemp = newTemp / 10.0;
+#endif
       }
     }
   }
@@ -298,12 +306,62 @@ void checkTimers()
   }
 }
 
-//states for fan and water pump
-void coolingControl()
+//updates states based on rpm, waterTemp, if engine is on
+// THREAD
+void updateState()
 {
+
   while (1)
   {
 
+    ThisThread::sleep_for(500); // Prevent rapid state changes
+
+    if (coolingKillFlag)
+    {
+      state = coolingKillState;
+      haltStateMachine = true;
+    }
+
+    if (!haltStateMachine)
+    {
+
+      if (!CANConnected)
+      {
+        state = safetyState;
+      }
+
+      else if (((waterTemp > ENGINE_WARM_F && rpm == 0) ||
+                (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected)) &&
+               engineWasRunning && !coolingDone)
+
+      {
+        state = cooldownState;
+      }
+
+      else if ((!engineWasRunning && rpm == 0) ||
+               (!ECUConnected && CANConnected) ||
+               coolingDone)
+      {
+        state = engineOffState;
+      }
+
+      else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F - ENGINE_TEMP_DEADBAND)
+      {
+        state = coldRunningState;
+      }
+
+      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F)
+      {
+        state = hotRunningState;
+      }
+      else
+      {
+        state = hotRunningState;
+        // When temp is in gap between hot and cold
+      }
+    }
+
+    // --------- SET OUTPUTS ----------
     switch (state)
     {
 
@@ -401,74 +459,6 @@ void coolingControl()
   }
 }
 
-//updates states based on rpm, waterTemp, if engine is on
-void updateState()
-{
-
-  while (1)
-  {
-    // if (rpm == 0)
-    // {
-    //   engineWasRunning = false;
-    // }
-
-    if (coolingKillFlag)
-    {
-      state = coolingKillState;
-      haltStateMachine = true;
-    }
-
-    while (!haltStateMachine)
-    {
-      if (!CANConnected)
-      {
-        state = safetyState;
-      }
-      else if (((waterTemp > ENGINE_WARM_F && rpm == 0) ||
-                (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected)) &&
-               engineWasRunning && !coolingDone)
-
-      {
-        state = cooldownState;
-      }
-
-      else if ((!engineWasRunning && rpm == 0) ||
-               (!ECUConnected && CANConnected) ||
-               coolingDone)
-      {
-        state = engineOffState;
-      }
-
-      else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F)
-      {
-        state = coldRunningState;
-      }
-
-      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F)
-      {
-        state = hotRunningState;
-      }
-      else
-      {
-        state = coldRunningState;
-      }
-    }
-  }
-}
-
-void checkGasAndThrottle()
-{
-  ThisThread::sleep_for(3000);
-  while (1)
-  {
-
-    if (gas1 > (throttle1 * 1.1) || gas1 < (throttle1 * 0.9))
-    {
-      ETCEnable.write(0);
-    }
-  }
-}
-
 void sendStatusMsg()
 {
   while (1)
@@ -476,6 +466,7 @@ void sendStatusMsg()
     statusMsg.data[0] = neutral.read();
     statusMsg.data[1] = ETCEnable.read();
     can0.write(statusMsg);
+
 #ifdef PRINT_STATUS
     ser.printf("\n");
     ser.printf("Water Temp:\t %f\n", waterTemp);
@@ -490,6 +481,7 @@ void sendStatusMsg()
     ser.printf("killCooling:\t %d\n", coolingKillFlag);
     ser.printf("ETCEnabled:\t %d\n", ETCEnable.read());
 #endif
+
     ThisThread::sleep_for(100);
   }
 }

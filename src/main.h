@@ -4,10 +4,12 @@
 #define PRINT_STATUS // uncomment - print status
 // #define PRINT_CAN    // uncomment - print CAN
 
+#define FURY // uncomment for Link Fury, comment for PE3
+
 #define CAN_BAUD 250000
 #define SERIAL_BAUD 921600
-#define ECU_TIMEOUT_MS 250
-#define CAN_TIMEOUT_MS 250
+#define ECU_TIMEOUT_MS 2000
+#define CAN_TIMEOUT_MS 2000
 #define COOLING_KILL_MS 10000
 
 // Cooldown times in milliseconds
@@ -22,12 +24,15 @@
 #define WATERPUMP_COOLDOWN_DC .5
 #define FAN_COOLDOWN_DC .7
 
+// For cooling fan and pump
 #define PWM_PERIOD_US 100
 
+// Used for to reset ECU online timer
 #define ECU_HEARTBEAT_ID 0x0CFFF048
 
 // Paramaters
-#define ENGINE_WARM_F 100 // Fahrenheit
+#define ENGINE_WARM_F 195       // Fahrenheit
+#define ENGINE_TEMP_DEADBAND 20 // Fahreneheit
 
 // State Machine states
 #define safetyState 0
@@ -38,6 +43,7 @@
 #define coolingKillState 5
 
 // Function Prototypes
+void CANCallback(); // Used for CAN frame interrupt
 void beepMotors();
 void initGPIO();
 void initCANMessages();
@@ -48,4 +54,5 @@ void downShift();
 void halfShift();
 void sendStatusMsg();
 void updateState();
+
 #endif
