@@ -27,8 +27,11 @@
 // For cooling fan and pump
 #define PWM_PERIOD_US 100
 
-// Used for to reset ECU online timer
-#define ECU_HEARTBEAT_ID 0x0CFFF048
+// CAN IDs
+#define PE1_ID 0x0CFFF048
+#define PE6_ID 0x0CFFF548
+#define STEERING_WHEEL_ID 0
+#define STARTER_ID 0x98
 
 // Paramaters
 #define ENGINE_WARM_F 195       // Fahrenheit
@@ -40,10 +43,45 @@
 #define cooldownState 2
 #define coldRunningState 3
 #define hotRunningState 4
-#define coolingKillState 5
+
+#define ETHROTTLE_MAX_ERROR_COUNT 10
+#define APPS_VS_APPS_MAX_ERROR 10
+#define TPS_VS_TPS_MAX_ERROR 10
+#define APPS_VS_TPS_MAX_ERROR 10
+
+// Used only for printing purposes
+#ifdef PRINT_STATUS
+char stateNames[5][20] = {"safetyState", "engineOffState",
+                          "cooldownState", "coldRunningState", "hotRunningState"};
+#endif
+
+// Globals
+volatile bool CANConnected = false;
+volatile bool engineRunning = false;
+volatile bool ECUConnected = false;
+volatile bool coolDownFlag = false;
+volatile bool coolingDone = false;
+volatile bool engineWasRunning = false;
+
+volatile float waterTemp = 0.0;
+volatile float batteryVoltage = 0.0;
+volatile int rpm = 0;
+volatile int state = 0;
+
+// For EThrotttle error checks
+volatile int APPS1 = 0;
+volatile int APPS2 = 0;
+volatile int TPS1 = 0;
+volatile int TPS2 = 0;
+volatile int APPSerrorCount = 0;
+volatile int TPSerrorCount = 0;
+volatile int APPSvsTPSerrorCount = 0;
+volatile bool eThrottleErrorOccurred = false;
 
 // Function Prototypes
-void CANCallback(); // Used for CAN frame interrupt
+void initBCM();
+void initTimers();
+void parseCANmessage();
 void beepMotors();
 void initGPIO();
 void initCANMessages();
@@ -54,5 +92,6 @@ void downShift();
 void halfShift();
 void sendStatusMsg();
 void updateState();
+void eThrottleSafety();
 
 #endif
