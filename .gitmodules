@@ -1,0 +1,3 @@
+[submodule "BR-CAN-IDs"]
+	path = BR-CAN-IDs
+	url = git@github.com:broncoracing/BR-CAN-IDs.git
