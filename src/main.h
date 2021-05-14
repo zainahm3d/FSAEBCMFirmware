@@ -44,6 +44,7 @@
 #define coldRunningState 3
 #define hotRunningState 4
 
+// ethrottle safety
 #define ETHROTTLE_MAX_ERROR_COUNT 10
 #define APPS_VS_APPS_MAX_ERROR 10
 #define TPS_VS_TPS_MAX_ERROR 10
