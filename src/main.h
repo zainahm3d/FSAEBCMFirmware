@@ -27,12 +27,6 @@
 // For cooling fan and pump
 #define PWM_PERIOD_US 100
 
-// CAN IDs
-#define PE1_ID 0x0CFFF048
-#define PE6_ID 0x0CFFF548
-#define STEERING_WHEEL_ID 0
-#define STARTER_ID 0x98
-
 // Paramaters
 #define ENGINE_WARM_F 195       // Fahrenheit
 #define ENGINE_TEMP_DEADBAND 20 // Fahreneheit
@@ -48,7 +42,9 @@
 #define ETHROTTLE_MAX_ERROR_COUNT 10
 #define APPS_VS_APPS_MAX_ERROR 10
 #define TPS_VS_TPS_MAX_ERROR 10
-#define APPS_VS_TPS_MAX_ERROR 10
+
+#define APPS_VS_TPS_MAX_ERROR_COUNT 50
+#define APPS_VS_TPS_MAX_ERROR 20 // include idle offset
 
 // Used only for printing purposes
 #ifdef PRINT_STATUS

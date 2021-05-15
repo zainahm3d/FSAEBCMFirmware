@@ -62,6 +62,7 @@ int main()
 /// @brief Setup GPIOs, timers, CAN messages, and threads.
 void initBCM()
 {
+  can0.frequency(CAN_BAUD);
   initGPIO();
   initTimers();
   initCANMessages();
@@ -163,7 +164,10 @@ void initGPIO()
   upShiftPin.write(0);
   downShiftPin.write(0);
   ECUPower.write(1);
-  ETCEnable.write(1); // TESTING ONLY
+
+  wait_ms(250);
+  ETCEnable.write(1);
+  wait_ms(100);
 
   // DigitalIns
   neutral.mode(PullUp);
@@ -342,17 +346,19 @@ void eThrottleSafety()
   }
 
   // Check APPS vs TPS
-  if (abs(APPS1 - TPS1) >= APPS_VS_TPS_MAX_ERROR)
+  // Only do this check if either TPS is above idle % so that check is not performed during idle
+  if ((abs(APPS1 - TPS1) >= APPS_VS_TPS_MAX_ERROR) && ((TPS1 > 12) || (TPS2 > 12)) )
   {
     APPSvsTPSerrorCount++;
+    led = !led; // TEMPORARY
   }
   else
   {
-    APPSerrorCount = 0;
+    APPSvsTPSerrorCount = 0;
   }
 
-  // If significant errors have ocurred, shut off engine and TB
-  if ((APPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (TPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (APPSvsTPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT))
+  // If significant errors have ocurred, shut off ETC SAFE power rail
+  if ((APPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (TPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (APPSvsTPSerrorCount >= APPS_VS_TPS_MAX_ERROR_COUNT))
   {
     ETCEnable.write(0); // Do not write to this pin anywhere else other than bootup.
     eThrottleErrorOccurred = true;
@@ -422,6 +428,14 @@ void parseCANmessage()
     break;
   }
 
+  case DBW_SENSORS_ID:      // each value is 0 - 100 as an integer
+    APPS1 = inMsg.data[0];
+    APPS2 = inMsg.data[1];
+    TPS1 = inMsg.data[2];
+    TPS2 = inMsg.data[3];
+
+    break;
+
   default:
     break;
   }
@@ -448,6 +462,11 @@ void sendStatusMsg()
     ser.printf("CAN Status:\t %d\n", CANConnected);
     ser.printf("ECU Status:\t %d\n", ECUConnected);
     ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
+
+    ser.printf("\n");
+    ser.printf("APPS1:\t\t %d\n", APPS1);
+    ser.printf("TPS1:\t\t %d\n", TPS1);
+    ser.printf("APPS vs TPS:\t %d\n", APPS1 - TPS1);
     ser.printf("ETCEnabled:\t %d\n", ETCEnable.read());
 #endif
 
