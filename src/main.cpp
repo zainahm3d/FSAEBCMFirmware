@@ -40,8 +40,6 @@ int main()
 
   while (1)
   {
-
-    // watchdog.kick();
     checkTimers();
 
     /* Recover CAN bus after significant amount of tx/rx errors,
@@ -54,6 +52,7 @@ int main()
 
     if (can0.read(inMsg))
     {
+      Watchdog::get_instance().kick();
       parseCANmessage();
     }
   }
@@ -73,10 +72,10 @@ void initBCM()
 
   // osThreadSetPriority(osThreadGetId(), osPriorityNormal1);
 
-  // Watchdog &watchdog = Watchdog::get_instance();
-
   // when watchdog timer elapses without a kick, mcu will soft reset.
-  // watchdog.start(5000);
+  // the watchdog is kicked during the most critical code (ETC safety)
+  Watchdog::get_instance().start(5000);
+  Watchdog::get_instance().kick();
 }
 
 void beepMotors()
@@ -165,9 +164,9 @@ void initGPIO()
   downShiftPin.write(0);
   ECUPower.write(1);
 
-  wait_ms(250);
+  wait_us(250 * 1000);
   ETCEnable.write(1);
-  wait_ms(100);
+  wait_us(100 * 1000);
 
   // DigitalIns
   neutral.mode(PullUp);
@@ -257,59 +256,61 @@ void updateState()
       state = safetyState;
     }
 
-    else if (!ECUConnected && CANConnected)
+    if (CANConnected && ECUConnected && rpm == 0)
     {
       state = engineOffState;
     }
 
-    else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F)
+    // Cooling system states (only with engine running)
+    if (rpm > 1000)
     {
-      state = coldRunningState;
-    }
+      if (waterTemp >= ENGINE_WARM_F + ENGINE_TEMP_DEADBAND)
+      {
+        state = hotRunningState;
+      }
 
-    else if (rpm > 1000 && waterTemp > ENGINE_WARM_F)
-    {
-      state = hotRunningState;
-    }
-    else
-    {
-      state = coldRunningState;
+      if (waterTemp <= ENGINE_WARM_F)
+      {
+        state = coldRunningState;
+      }
     }
 
     // --------- SET OUTPUTS ----------
     switch (state)
     {
+      case safetyState:                           // when we lose CAN bus connection
+        fan.write(FAN_ACTIVE_DC);
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        ETCEnable.write(0);
+        break;
 
-    case safetyState:
-      engineWasRunning = false;
-      fan.write(FAN_ACTIVE_DC);
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      coolingDone = false;
-      break;
+      case engineOffState:
+        if (waterTemp >= 130)
+        {
+          fan.write(FAN_COOLDOWN_DC);
+          waterPump.write(WATERPUMP_COOLDOWN_DC);
+        }
+        else
+        {
+          fan.write(0);
+          waterPump.write(0);
+        }
+        break;
 
-    case engineOffState:
-      fan.write(0);
-      waterPump.write(0);
-      break;
+      case coldRunningState:
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        fan.write(0);
+        break;
 
-    case coldRunningState:
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      fan.write(0);
-      coolingDone = false;
-      engineWasRunning = true;
-      break;
+      case hotRunningState:
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        fan.write(FAN_ACTIVE_DC);
+        break;
 
-    case hotRunningState:
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      fan.write(FAN_ACTIVE_DC);
-      coolingDone = false;
-      engineWasRunning = true;
-      break;
-
-    default:
-      fan.write(FAN_ACTIVE_DC);
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      break;
+      default:
+        fan.write(FAN_ACTIVE_DC);
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        break;
     }
   }
 }
@@ -319,7 +320,7 @@ void updateState()
  * Check APPS1 vs APPS2
  * Check TPS1 vs TPS2
  * Check APPS vs TPS
- * Any fault lasting 10 consecutive function calls (100ms) will cause a latching disable of EThrottle safety output.
+ * Any fault lasting x_MAX_ERROR consecutive function calls will cause a latching disable of EThrottle safety output.
  *
  * @note ECU must be configured to send out all APPS/TPS values as 0 to 100 (100 being WOT)
 */
@@ -360,7 +361,7 @@ void eThrottleSafety()
   // If significant errors have ocurred, shut off ETC SAFE power rail
   if ((APPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (TPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (APPSvsTPSerrorCount >= APPS_VS_TPS_MAX_ERROR_COUNT))
   {
-    ETCEnable.write(0); // Do not write to this pin anywhere else other than bootup.
+    ETCEnable.write(0);
     eThrottleErrorOccurred = true;
   }
 }
@@ -405,12 +406,7 @@ void parseCANmessage()
 
   case PE1_ID:
     ECUTimer.reset();
-
     rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
-    if (rpm > 0)
-    {
-      coolingDone = false;
-    }
     break;
 
   case PE6_ID:
@@ -484,7 +480,7 @@ void upShift()
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   upShiftPin.write(1);
-  ThisThread::sleep_for(70);
+  ThisThread::sleep_for(150); // upshift time
   upShiftPin.write(0);
   sparkCut.write(1);
 }
@@ -499,7 +495,7 @@ void downShift()
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   downShiftPin.write(1);
-  ThisThread::sleep_for(150);
+  ThisThread::sleep_for(200); // downshift time
   downShiftPin.write(0);
   sparkCut.write(1);
 }

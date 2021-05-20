@@ -17,18 +17,18 @@
 #define WATERPUMP_COOLDOWN_MS 60000
 
 // Active duty cycles
-#define WATERPUMP_ACTIVE_DC 0.9
-#define FAN_ACTIVE_DC 0.7
+#define WATERPUMP_ACTIVE_DC 1.0f
+#define FAN_ACTIVE_DC 0.7f
 
 // Cooldown duty cycles
-#define WATERPUMP_COOLDOWN_DC .5
-#define FAN_COOLDOWN_DC .7
+#define WATERPUMP_COOLDOWN_DC .7f
+#define FAN_COOLDOWN_DC .5f
 
 // For cooling fan and pump
 #define PWM_PERIOD_US 100
 
 // Paramaters
-#define ENGINE_WARM_F 195       // Fahrenheit
+#define ENGINE_WARM_F 175       // Fahrenheit
 #define ENGINE_TEMP_DEADBAND 20 // Fahreneheit
 
 // State Machine states
@@ -56,9 +56,6 @@ char stateNames[5][20] = {"safetyState", "engineOffState",
 volatile bool CANConnected = false;
 volatile bool engineRunning = false;
 volatile bool ECUConnected = false;
-volatile bool coolDownFlag = false;
-volatile bool coolingDone = false;
-volatile bool engineWasRunning = false;
 
 volatile float waterTemp = 0.0;
 volatile float batteryVoltage = 0.0;
