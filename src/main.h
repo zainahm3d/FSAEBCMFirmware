@@ -18,7 +18,7 @@
 
 // Active duty cycles
 #define WATERPUMP_ACTIVE_DC 1.0f
-#define FAN_ACTIVE_DC 0.7f
+#define FAN_ACTIVE_DC 1.0f
 
 // Cooldown duty cycles
 #define WATERPUMP_COOLDOWN_DC .7f
@@ -28,7 +28,7 @@
 #define PWM_PERIOD_US 100
 
 // Paramaters
-#define ENGINE_WARM_F 175       // Fahrenheit
+#define ENGINE_WARM_F 150       // Fahrenheit
 #define ENGINE_TEMP_DEADBAND 20 // Fahreneheit
 
 // State Machine states
