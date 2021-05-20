@@ -285,7 +285,7 @@ void updateState()
         break;
 
       case engineOffState:
-        if (waterTemp >= 130)
+        if (waterTemp >= 190)
         {
           fan.write(FAN_COOLDOWN_DC);
           waterPump.write(WATERPUMP_COOLDOWN_DC);
