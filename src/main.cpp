@@ -1,6 +1,7 @@
 #include "main.h"
 #include <mbed.h>
 #include "rtos.h"
+#include "../BR-CAN-IDs/BR_CAN_IDs.h"
 
 DigitalOut led(LED1);
 
@@ -23,72 +24,27 @@ CANMessage statusMsg;
 
 Serial ser(USBTX, USBRX, SERIAL_BAUD);
 
-Thread checkTimerThread;
-Thread coolingControlThread;
 Thread sendStatusThread;
 Thread updateStateThread;
-Thread checkGasThread;
 
 Timer ECUTimer;
 Timer CANTimer;
 Timer starterTimer;
 Timer CANResetTimer;
-Timer coolingKillTimer;
-
-volatile bool CANConnected = false;
-volatile bool engineRunning = false;
-volatile bool ECUConnected = false;
-volatile bool coolDownFlag = false;
-volatile bool coolingKillFlag = false;
-volatile bool haltStateMachine = false;
-volatile bool coolingDone = false;
-volatile bool engineWasRunning = false;
-
-volatile float waterTemp = 0.0;
-volatile float batteryVoltage = 0.0;
-volatile int rpm = 0;
-volatile int state = 0;
-volatile int gas1 = 0;
-volatile int gas2 = 0;
-volatile int throttle1 = 0;
-volatile int throttle2 = 0;
-
-// Used only for printing purposes
-#ifdef PRINT_STATUS
-char stateNames[6][20] = {"safetyState", "engineOffState",
-                          "cooldownState", "coldRunningState", "hotRunningState"};
-#endif
+Timer eThrottleSafetyTimer;
 
 int main()
 {
-  ECUTimer.reset();
-  ECUTimer.start();
 
-  CANTimer.reset();
-  CANTimer.start();
-
-  starterTimer.reset();
-  starterTimer.start();
-
-  CANResetTimer.reset();
-  CANResetTimer.start();
-
-  initCANMessages();
-  initGPIO();
-  beepMotors();
-
-  coolingControlThread.start(coolingControl);
-  checkTimerThread.start(checkTimers);
-  sendStatusThread.start(sendStatusMsg);
-  updateStateThread.start(updateState);
+  initBCM();
 
   while (1)
   {
+    checkTimers();
 
-    // recover CAN bus after significant amount of errors,
-    // up to once per second
-    if ((can0.tderror() > 5 || can0.rderror() > 5) &&
-        CANResetTimer.read() > 1)
+    /* Recover CAN bus after significant amount of tx/rx errors,
+     up to once per second */
+    if ((can0.tderror() > 5 || can0.rderror() > 5) && CANResetTimer.read() > 1)
     {
       can0.reset();
       CANResetTimer.reset();
@@ -96,73 +52,30 @@ int main()
 
     if (can0.read(inMsg))
     {
-
-#ifdef PRINT_CAN
-      ser.printf("ID: %d", inMsg.id);
-      ser.printf(" Data: ");
-      for (int i = 0; i < inMsg.len; i++)
-      {
-        ser.printf("%d ", inMsg.data[i]);
-      }
-      ser.printf("\n");
-#endif
-
-      // Reset watchdog timers
-      CANTimer.reset();
-      if (inMsg.id == ECU_HEARTBEAT_ID)
-      {
-        ECUTimer.reset();
-      }
-
-      if (inMsg.id == 98)
-      {
-        if (inMsg.data[0] == 91)
-        {
-          starter.write(1);
-          starterTimer.reset();
-        }
-      }
-
-      // Steering wheel ID is 0
-      if (inMsg.id == 0)
-      {
-        if (inMsg.data[0] == 10)
-        {
-          upShift();
-        }
-        else if (inMsg.data[0] == 11)
-        {
-          downShift();
-        }
-        else if (inMsg.data[0] == 14)
-        {
-          halfShift();
-        }
-      }
-
-      // Read in ECU frames
-      // PE1
-      if (inMsg.id == 0x0CFFF048)
-      {
-        rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
-        if (rpm > 0)
-        {
-          coolingDone = false;
-        }
-      }
-      // PE6
-      else if (inMsg.id == 0x0CFFF548)
-      {
-        uint16_t newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
-        if (newTemp > 32767)
-        {
-          newTemp = newTemp - 65536;
-        }
-        waterTemp = ((newTemp / 10.0) * 1.8) + 32; // For LINK FURY
-        // waterTemp = newTemp / 10; // FOR PE3
-      }
+      Watchdog::get_instance().kick();
+      parseCANmessage();
     }
   }
+}
+
+/// @brief Setup GPIOs, timers, CAN messages, and threads.
+void initBCM()
+{
+  can0.frequency(CAN_BAUD);
+  initGPIO();
+  initTimers();
+  initCANMessages();
+  beepMotors();
+
+  sendStatusThread.start(sendStatusMsg);
+  updateStateThread.start(updateState);
+
+  // osThreadSetPriority(osThreadGetId(), osPriorityNormal1);
+
+  // when watchdog timer elapses without a kick, mcu will soft reset.
+  // the watchdog is kicked during the most critical code (ETC safety)
+  Watchdog::get_instance().start(5000);
+  Watchdog::get_instance().kick();
 }
 
 void beepMotors()
@@ -250,232 +163,291 @@ void initGPIO()
   upShiftPin.write(0);
   downShiftPin.write(0);
   ECUPower.write(1);
-  ETCEnable.write(1); // TESTING ONLY
+
+  wait_us(250 * 1000);
+  ETCEnable.write(1);
+  wait_us(100 * 1000);
 
   // DigitalIns
   neutral.mode(PullUp);
 }
 
+void initTimers()
+{
+  ECUTimer.reset();
+  ECUTimer.start();
+
+  CANTimer.reset();
+  CANTimer.start();
+
+  starterTimer.reset();
+  starterTimer.start();
+
+  CANResetTimer.reset();
+  CANResetTimer.start();
+
+  eThrottleSafetyTimer.reset();
+  eThrottleSafetyTimer.start();
+}
+
+void initCANMessages()
+{
+  statusMsg.id = 20;
+  statusMsg.len = 8;
+}
+
 void checkTimers()
 {
-  while (1)
+  if (ECUTimer.read_ms() > ECU_TIMEOUT_MS)
   {
-    if (ECUTimer.read_ms() > ECU_TIMEOUT_MS)
-    {
-      ECUConnected = false;
-      engineRunning = false;
+    ECUConnected = false;
+    engineRunning = false;
 
-      // if ECU shuts down, this data must be reset
-      rpm = 0;
-      waterTemp = 0;
-    }
-    else
-    {
-      ECUConnected = true;
-      engineRunning = true;
-    }
+    // if ECU shuts down, this data must be reset
+    rpm = 0;
+    waterTemp = 0;
+  }
+  else
+  {
+    ECUConnected = true;
+    engineRunning = true;
+  }
 
-    if (CANTimer.read_ms() > CAN_TIMEOUT_MS)
-    {
-      led.write(0);
-      CANConnected = false;
-    }
-    else
-    {
-      led.write(1);
-      CANConnected = true;
-    }
+  if (CANTimer.read_ms() > CAN_TIMEOUT_MS)
+  {
+    led.write(0);
+    CANConnected = false;
+  }
+  else
+  {
+    led.write(1);
+    CANConnected = true;
+  }
 
-    if (starterTimer.read_ms() > 100)
-    { // timeout starter motor after 100ms
-      starter.write(0);
-    }
+  if (starterTimer.read_ms() > 100)
+  {
+    // timeout starter motor after 100ms
+    starter.write(0);
+  }
 
-    if (coolingKillTimer.read_ms() > COOLING_KILL_MS)
-    {
-      haltStateMachine = false;
-    }
+  if (eThrottleSafetyTimer.read_ms() >= 10)
+  {
+    eThrottleSafety();
+
+    eThrottleSafetyTimer.reset();
+    eThrottleSafetyTimer.start();
   }
 }
 
-//states for fan and water pump
-void coolingControl()
-{
-  while (1)
-  {
-
-    switch (state)
-    {
-
-    case safetyState:
-    {
-      engineWasRunning = false;
-      fan.write(FAN_ACTIVE_DC);
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      coolingDone = false;
-      break;
-    }
-
-    case engineOffState:
-    {
-      fan.write(0);
-      waterPump.write(0);
-
-      break;
-    }
-
-    case cooldownState:
-    {
-
-      fan.write(FAN_COOLDOWN_DC);
-      waterPump.write(WATERPUMP_COOLDOWN_DC);
-
-      for (int i = 0; i < (FAN_COOLDOWN_MS / 1000); i++)
-      {
-
-        if (rpm == 0)
-        {
-          ThisThread::sleep_for(1000);
-        }
-        else
-        {
-          i = (FAN_COOLDOWN_MS) / 1000;
-        }
-      }
-
-      fan.write(0);
-
-      for (int i = 0; i < ((WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS) / 1000); i++)
-      {
-
-        if (rpm == 0)
-        {
-          ThisThread::sleep_for(1000);
-        }
-        else
-        {
-          i = (WATERPUMP_COOLDOWN_MS - FAN_COOLDOWN_MS) / 1000;
-        }
-      }
-
-      waterPump.write(0);
-      coolingDone = true;
-      state = engineOffState;
-      break;
-    }
-
-    case coldRunningState:
-    {
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      fan.write(0);
-      coolingDone = false;
-      engineWasRunning = true;
-      break;
-    }
-
-    case hotRunningState:
-    {
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      fan.write(FAN_ACTIVE_DC);
-      coolingDone = false;
-      engineWasRunning = true;
-      break;
-    }
-
-    case coolingKillState:
-    {
-      coolingKillTimer.start();
-      fan.write(0);
-      waterPump.write(0);
-      coolingDone = false;
-      break;
-    }
-
-    default:
-    {
-      fan.write(FAN_ACTIVE_DC);
-      waterPump.write(WATERPUMP_ACTIVE_DC);
-      break;
-    }
-    }
-  }
-}
-
-//updates states based on rpm, waterTemp, if engine is on
+/**
+ *  @brief Updates target state and outputs based on CAN data.
+ *  @note THREAD
+*/
 void updateState()
 {
 
   while (1)
   {
-    // if (rpm == 0)
-    // {
-    //   engineWasRunning = false;
-    // }
 
-    if (coolingKillFlag)
+    ThisThread::sleep_for(1000); // Prevent rapid state changes
+
+    if (!CANConnected)
     {
-      state = coolingKillState;
-      haltStateMachine = true;
+      state = safetyState;
     }
 
-    while (!haltStateMachine)
+    if (CANConnected && ECUConnected && rpm == 0)
     {
-      if (!CANConnected)
-      {
-        state = safetyState;
-      }
-      else if (((waterTemp > ENGINE_WARM_F && rpm == 0) ||
-                (waterTemp > ENGINE_WARM_F && !ECUConnected && CANConnected)) &&
-               engineWasRunning && !coolingDone)
+      state = engineOffState;
+    }
 
-      {
-        state = cooldownState;
-      }
-
-      else if ((!engineWasRunning && rpm == 0) ||
-               (!ECUConnected && CANConnected) ||
-               coolingDone)
-      {
-        state = engineOffState;
-      }
-
-      else if (rpm > 1000 && waterTemp <= ENGINE_WARM_F)
-      {
-        state = coldRunningState;
-      }
-
-      else if (rpm > 1000 && waterTemp > ENGINE_WARM_F)
+    // Cooling system states (only with engine running)
+    if (rpm > 1000)
+    {
+      if (waterTemp >= ENGINE_WARM_F + ENGINE_TEMP_DEADBAND)
       {
         state = hotRunningState;
       }
-      else
+
+      if (waterTemp <= ENGINE_WARM_F)
       {
         state = coldRunningState;
       }
     }
-  }
-}
 
-void checkGasAndThrottle()
-{
-  ThisThread::sleep_for(3000);
-  while (1)
-  {
-
-    if (gas1 > (throttle1 * 1.1) || gas1 < (throttle1 * 0.9))
+    // --------- SET OUTPUTS ----------
+    switch (state)
     {
-      ETCEnable.write(0);
+      case safetyState:                           // when we lose CAN bus connection
+        fan.write(FAN_ACTIVE_DC);
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        ETCEnable.write(0);
+        break;
+
+      case engineOffState:
+        if (waterTemp >= 130)
+        {
+          fan.write(FAN_COOLDOWN_DC);
+          waterPump.write(WATERPUMP_COOLDOWN_DC);
+        }
+        else
+        {
+          fan.write(0);
+          waterPump.write(0);
+        }
+        break;
+
+      case coldRunningState:
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        fan.write(0);
+        break;
+
+      case hotRunningState:
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        fan.write(FAN_ACTIVE_DC);
+        break;
+
+      default:
+        fan.write(FAN_ACTIVE_DC);
+        waterPump.write(WATERPUMP_ACTIVE_DC);
+        break;
     }
   }
 }
 
+/**
+ * @brief Check for a fault lasting 100ms by doing 10 10ms checks.
+ * Check APPS1 vs APPS2
+ * Check TPS1 vs TPS2
+ * Check APPS vs TPS
+ * Any fault lasting x_MAX_ERROR consecutive function calls will cause a latching disable of EThrottle safety output.
+ *
+ * @note ECU must be configured to send out all APPS/TPS values as 0 to 100 (100 being WOT)
+*/
+void eThrottleSafety()
+{
+  // Check APPS1 vs APPS2
+  if (abs(APPS1 - APPS2) >= APPS_VS_APPS_MAX_ERROR)
+  {
+    APPSerrorCount++;
+  }
+  else
+  {
+    APPSerrorCount = 0;
+  }
+
+  // Check TPS1 vs TPS2
+  if (abs(TPS1 - TPS2) >= TPS_VS_TPS_MAX_ERROR)
+  {
+    TPSerrorCount++;
+  }
+  else
+  {
+    TPSerrorCount = 0;
+  }
+
+  // Check APPS vs TPS
+  // Only do this check if either TPS is above idle % so that check is not performed during idle
+  if ((abs(APPS1 - TPS1) >= APPS_VS_TPS_MAX_ERROR) && ((TPS1 > 12) || (TPS2 > 12)) )
+  {
+    APPSvsTPSerrorCount++;
+    led = !led; // TEMPORARY
+  }
+  else
+  {
+    APPSvsTPSerrorCount = 0;
+  }
+
+  // If significant errors have ocurred, shut off ETC SAFE power rail
+  if ((APPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (TPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT) || (APPSvsTPSerrorCount >= APPS_VS_TPS_MAX_ERROR_COUNT))
+  {
+    ETCEnable.write(0);
+    eThrottleErrorOccurred = true;
+  }
+}
+
+/// @brief Read in CAN message and set variable with data. Reset timeouts if necessary.
+void parseCANmessage()
+{
+
+  CANTimer.reset();
+
+#ifdef PRINT_CAN
+  ser.printf("ID: %d", inMsg.id);
+  ser.printf(" Data: ");
+  for (int i = 0; i < inMsg.len; i++)
+  {
+    ser.printf("%d ", inMsg.data[i]);
+  }
+  ser.printf("\n");
+#endif
+
+  switch (inMsg.id)
+  {
+  case STEERING_WHEEL_ID:
+    switch (inMsg.data[0])
+    {
+    case 10:
+      upShift();
+      break;
+
+    case 11:
+      downShift();
+      break;
+
+    case 14:
+      halfShift();
+      break;
+
+    default:
+      break;
+    }
+    break;
+
+  case PE1_ID:
+    ECUTimer.reset();
+    rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
+    break;
+
+  case PE6_ID:
+  {
+    uint16_t newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
+    if (newTemp > 32767)
+    {
+      newTemp = newTemp - 65536;
+    }
+#ifdef FURY
+    waterTemp = ((newTemp / 10.0) * 1.8) + 32;
+#else
+    waterTemp = newTemp / 10.0;
+#endif
+    break;
+  }
+
+  case DBW_SENSORS_ID:      // each value is 0 - 100 as an integer
+    APPS1 = inMsg.data[0];
+    APPS2 = inMsg.data[1];
+    TPS1 = inMsg.data[2];
+    TPS2 = inMsg.data[3];
+
+    break;
+
+  default:
+    break;
+  }
+}
+
+/// @brief Print a status message over UART and CAN
 void sendStatusMsg()
 {
   while (1)
   {
     statusMsg.data[0] = neutral.read();
     statusMsg.data[1] = ETCEnable.read();
+    // statusMsg.data[2] = (uint8_t)fan.read();
+    // statusMsg.data[3] = (uint8_t)waterPump.read();
     can0.write(statusMsg);
+
 #ifdef PRINT_STATUS
     ser.printf("\n");
     ser.printf("Water Temp:\t %f\n", waterTemp);
@@ -486,18 +458,16 @@ void sendStatusMsg()
     ser.printf("CAN Status:\t %d\n", CANConnected);
     ser.printf("ECU Status:\t %d\n", ECUConnected);
     ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
-    ser.printf("SMHalted:\t %d\n", haltStateMachine);
-    ser.printf("killCooling:\t %d\n", coolingKillFlag);
+
+    ser.printf("\n");
+    ser.printf("APPS1:\t\t %d\n", APPS1);
+    ser.printf("TPS1:\t\t %d\n", TPS1);
+    ser.printf("APPS vs TPS:\t %d\n", APPS1 - TPS1);
     ser.printf("ETCEnabled:\t %d\n", ETCEnable.read());
 #endif
+
     ThisThread::sleep_for(100);
   }
-}
-
-void initCANMessages()
-{
-  statusMsg.id = 20;
-  statusMsg.len = 8;
 }
 
 void upShift()
@@ -510,7 +480,7 @@ void upShift()
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   upShiftPin.write(1);
-  ThisThread::sleep_for(70);
+  ThisThread::sleep_for(150); // upshift time
   upShiftPin.write(0);
   sparkCut.write(1);
 }
@@ -525,7 +495,7 @@ void downShift()
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   downShiftPin.write(1);
-  ThisThread::sleep_for(150);
+  ThisThread::sleep_for(200); // downshift time
   downShiftPin.write(0);
   sparkCut.write(1);
 }
