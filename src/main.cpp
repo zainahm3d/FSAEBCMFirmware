@@ -348,10 +348,10 @@ void eThrottleSafety()
 
   // Check APPS vs TPS
   // Only do this check if either TPS is above idle % so that check is not performed during idle
-  if ((abs(APPS1 - TPS1) >= APPS_VS_TPS_MAX_ERROR) && ((TPS1 > 12) || (TPS2 > 12)) )
+  if ((abs(APPS1 - TPS1) >= APPS_VS_TPS_MAX_ERROR) &&
+      ((TPS1 > APPS_VS_TPS_ENABLE_THRESHOLD) || (TPS2 > APPS_VS_TPS_ENABLE_THRESHOLD)) )
   {
     APPSvsTPSerrorCount++;
-    led = !led; // TEMPORARY
   }
   else
   {
