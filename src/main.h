@@ -47,12 +47,17 @@
 #define APPS_VS_TPS_MAX_ERROR           20 // include idle offset
 
 // when TPS is above this value, APPS vs TPS error checking is active
-#define APPS_VS_TPS_ENABLE_THRESHOLD    32
+#define APPS_VS_TPS_ENABLE_THRESHOLD    50
 
 // Used only for printing purposes
 #ifdef PRINT_STATUS
-char stateNames[5][20] = {"safetyState", "engineOffState",
-                          "cooldownState", "coldRunningState", "hotRunningState"};
+char stateNames[5][20] = {
+                            "safetyState",
+                            "engineOffState",
+                            "cooldownState",
+                            "coldRunningState",
+                            "hotRunningState"
+                        };
 #endif
 
 // Globals
