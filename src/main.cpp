@@ -363,6 +363,20 @@ void eThrottleSafety()
   {
     ETCEnable.write(0);
     eThrottleErrorOccurred = true;
+
+    if (APPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT)
+    {
+      ser.printf("********** ETC KILLED - REASON: APPS1 vs APPS2 **********\n");
+    }
+    else if (TPSerrorCount >= ETHROTTLE_MAX_ERROR_COUNT)
+    {
+      ser.printf("********** ETC KILLED - REASON: TPS1 vs TPS2 **********\n");
+    }
+    else if (APPSvsTPSerrorCount >= APPS_VS_TPS_MAX_ERROR_COUNT)
+    {
+      ser.printf("********** ETC KILLED - REASON: APPS vs TPS **********");
+    }
+
   }
 }
 
