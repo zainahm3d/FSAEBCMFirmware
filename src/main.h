@@ -28,7 +28,7 @@
 #define PWM_PERIOD_US                   100
 
 // Paramaters
-#define ENGINE_WARM_F                   150       // Fahrenheit
+#define ENGINE_WARM_F                   100       // Fahrenheit
 #define ENGINE_TEMP_DEADBAND            20 // Fahreneheit
 
 // State Machine states
