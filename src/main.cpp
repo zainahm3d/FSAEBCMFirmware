@@ -374,7 +374,7 @@ void eThrottleSafety()
     }
     else if (APPSvsTPSerrorCount >= APPS_VS_TPS_MAX_ERROR_COUNT)
     {
-      ser.printf("********** ETC KILLED - REASON: APPS vs TPS **********");
+      ser.printf("********** ETC KILLED - REASON: APPS vs TPS **********\n");
     }
 
   }
