@@ -494,7 +494,7 @@ void upShift()
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   upShiftPin.write(1);
-  ThisThread::sleep_for(150); // upshift time
+  ThisThread::sleep_for(UPSHIFT_TIME); //
   upShiftPin.write(0);
   sparkCut.write(1);
 }
@@ -509,7 +509,7 @@ void downShift()
   sparkCut.write(0);
   ThisThread::sleep_for(10);
   downShiftPin.write(1);
-  ThisThread::sleep_for(200); // downshift time
+  ThisThread::sleep_for(DOWNSHIFT_TIME);
   downShiftPin.write(0);
   sparkCut.write(1);
 }
@@ -524,7 +524,7 @@ void halfShift()
   upShiftPin.write(1);
   ThisThread::sleep_for(7);
   downShiftPin.write(1);
-  ThisThread::sleep_for(150);
+  ThisThread::sleep_for(HALFSHIFT_TIME);
   upShiftPin.write(0);
   downShiftPin.write(0);
 }

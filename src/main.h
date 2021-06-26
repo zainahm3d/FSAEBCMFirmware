@@ -1,10 +1,10 @@
 #ifndef BCM_PREFERENCES
 #define BCM_PREFERENCES
 
-#define PRINT_STATUS // uncomment - print status
-// #define PRINT_CAN    // uncomment - print CAN
+#define PRINT_STATUS                               // uncomment - print status
+// #define PRINT_CAN                               // uncomment - print CAN
 
-#define FURY // uncomment for Link Fury, comment for PE3
+#define FURY                                       // uncomment for Link Fury, comment for PE3
 
 #define CAN_BAUD                        250000
 #define SERIAL_BAUD                     921600
@@ -27,9 +27,9 @@
 // For cooling fan and pump
 #define PWM_PERIOD_US                   100
 
-// Paramaters
+// Parameters
 #define ENGINE_WARM_F                   100       // Fahrenheit
-#define ENGINE_TEMP_DEADBAND            20 // Fahreneheit
+#define ENGINE_TEMP_DEADBAND            20        // Fahrenheit
 
 // State Machine states
 #define safetyState                     0
@@ -38,13 +38,18 @@
 #define coldRunningState                3
 #define hotRunningState                 4
 
+// Shift times in milliseconds
+#define DOWNSHIFT_TIME                  200
+#define UPSHIFT_TIME                    150
+#define HALFSHIFT_TIME                  150
+
 // ethrottle safety
 #define ETHROTTLE_MAX_ERROR_COUNT       10
 #define APPS_VS_APPS_MAX_ERROR          10
 #define TPS_VS_TPS_MAX_ERROR            10
 
 #define APPS_VS_TPS_MAX_ERROR_COUNT     50
-#define APPS_VS_TPS_MAX_ERROR           20 // include idle offset
+#define APPS_VS_TPS_MAX_ERROR           20        // include idle offset
 
 // when TPS is above this value, APPS vs TPS error checking is active
 #define APPS_VS_TPS_ENABLE_THRESHOLD    50
