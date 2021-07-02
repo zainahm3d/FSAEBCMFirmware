@@ -5,9 +5,9 @@
 
 DigitalOut led(LED1);
 
-PwmOut fan(PA_10);
-PwmOut waterPump(PA_8);
-PwmOut starter(PA_1);
+// PwmOut fan(PA_10);
+// PwmOut waterPump(PA_8);
+// PwmOut starter(PA_1);
 
 DigitalOut sparkCut(PA_0);
 DigitalOut upShiftPin(PB_1);
@@ -65,7 +65,7 @@ void initBCM()
   initGPIO();
   initTimers();
   initCANMessages();
-  beepMotors();
+  // beepMotors();
 
   sendStatusThread.start(sendStatusMsg);
   updateStateThread.start(updateState);
@@ -78,88 +78,88 @@ void initBCM()
   Watchdog::get_instance().kick();
 }
 
-void beepMotors()
-{
-  // Beep water Pump
+// void beepMotors()
+// {
+//   // Beep water Pump
 
-  waterPump.period_us(200);
-  waterPump.write(0);
-  ThisThread::sleep_for(100);
+//   waterPump.period_us(200);
+//   waterPump.write(0);
+//   ThisThread::sleep_for(100);
 
-  for (int i = 0; i < 2; i++)
-  {
-    for (int j = 0; j < 100; j++)
-    {
-      waterPump.write(.2);
-      wait_us(800);
-      waterPump.write(0);
-      wait_us(400);
-    }
-    ThisThread::sleep_for(20);
-  }
+//   for (int i = 0; i < 2; i++)
+//   {
+//     for (int j = 0; j < 100; j++)
+//     {
+//       waterPump.write(.2);
+//       wait_us(800);
+//       waterPump.write(0);
+//       wait_us(400);
+//     }
+//     ThisThread::sleep_for(20);
+//   }
 
-  for (int i = 0; i < 2; i++)
-  {
-    for (int j = 0; j < 400; j++)
-    {
-      waterPump.write(.2);
-      wait_us(200);
-      waterPump.write(0);
-      wait_us(150);
-    }
-    ThisThread::sleep_for(20);
-  }
+//   for (int i = 0; i < 2; i++)
+//   {
+//     for (int j = 0; j < 400; j++)
+//     {
+//       waterPump.write(.2);
+//       wait_us(200);
+//       waterPump.write(0);
+//       wait_us(150);
+//     }
+//     ThisThread::sleep_for(20);
+//   }
 
-  waterPump.period_us(PWM_PERIOD_US);
-  waterPump.write(0);
+//   waterPump.period_us(PWM_PERIOD_US);
+//   waterPump.write(0);
 
-  // Beep cooling fan
+//   // Beep cooling fan
 
-  fan.period_us(200);
-  fan.write(0);
-  ThisThread::sleep_for(100);
+//   fan.period_us(200);
+//   fan.write(0);
+//   ThisThread::sleep_for(100);
 
-  for (int i = 0; i < 2; i++)
-  {
-    for (int j = 0; j < 400; j++)
-    {
-      fan.write(.2);
-      wait_us(200);
-      fan.write(0);
-      wait_us(150);
-    }
-    ThisThread::sleep_for(20);
-  }
+//   for (int i = 0; i < 2; i++)
+//   {
+//     for (int j = 0; j < 400; j++)
+//     {
+//       fan.write(.2);
+//       wait_us(200);
+//       fan.write(0);
+//       wait_us(150);
+//     }
+//     ThisThread::sleep_for(20);
+//   }
 
-  for (int i = 0; i < 2; i++)
-  {
-    for (int j = 0; j < 100; j++)
-    {
-      fan.write(.2);
-      wait_us(800);
-      fan.write(0);
-      wait_us(400);
-    }
-    ThisThread::sleep_for(20);
-  }
+//   for (int i = 0; i < 2; i++)
+//   {
+//     for (int j = 0; j < 100; j++)
+//     {
+//       fan.write(.2);
+//       wait_us(800);
+//       fan.write(0);
+//       wait_us(400);
+//     }
+//     ThisThread::sleep_for(20);
+//   }
 
-  fan.period_us(PWM_PERIOD_US);
-  fan.write(0);
-}
+//   fan.period_us(PWM_PERIOD_US);
+//   fan.write(0);
+// }
 
 void initGPIO()
 {
   // PWMs
-  waterPump.period_us(PWM_PERIOD_US);
-  fan.period_us(PWM_PERIOD_US);
-  starter.period_us(PWM_PERIOD_US);
+  // waterPump.period_us(PWM_PERIOD_US);
+  // fan.period_us(PWM_PERIOD_US);
+  // starter.period_us(PWM_PERIOD_US);
 
-  waterPump.write(0);
-  fan.write(0);
-  starter.write(0);
+  // waterPump.write(0);
+  // fan.write(0);
+  // starter.write(0);
 
   // DigitalOuts
-  sparkCut.write(1); // Active LOW
+  // sparkCut.write(1); // Active LOW
   upShiftPin.write(0);
   downShiftPin.write(0);
   ECUPower.write(1);
@@ -224,11 +224,11 @@ void checkTimers()
     CANConnected = true;
   }
 
-  if (starterTimer.read_ms() > 100)
-  {
-    // timeout starter motor after 100ms
-    starter.write(0);
-  }
+  // if (starterTimer.read_ms() > 100)
+  // {
+  //   // timeout starter motor after 100ms
+  //   starter.write(0);
+  // }
 
   if (eThrottleSafetyTimer.read_ms() >= 10)
   {
@@ -262,54 +262,54 @@ void updateState()
     }
 
     // Cooling system states (only with engine running)
-    if (rpm > 1000)
-    {
-      if (waterTemp >= ENGINE_WARM_F + ENGINE_TEMP_DEADBAND)
-      {
-        state = hotRunningState;
-      }
+    // if (rpm > 1000)
+    // {
+    //   if (waterTemp >= ENGINE_WARM_F + ENGINE_TEMP_DEADBAND)
+    //   {
+    //     state = hotRunningState;
+    //   }
 
-      if (waterTemp <= ENGINE_WARM_F)
-      {
-        state = coldRunningState;
-      }
-    }
+    //   if (waterTemp <= ENGINE_WARM_F)
+    //   {
+    //     state = coldRunningState;
+    //   }
+    // }
 
     // --------- SET OUTPUTS ----------
     switch (state)
     {
       case safetyState:                           // when we lose CAN bus connection
-        fan.write(FAN_ACTIVE_DC);
-        waterPump.write(WATERPUMP_ACTIVE_DC);
+        // fan.write(FAN_ACTIVE_DC);
+        // waterPump.write(WATERPUMP_ACTIVE_DC);
         ETCEnable.write(0);
         break;
 
-      case engineOffState:
-        if (waterTemp >= 190)
-        {
-          fan.write(FAN_COOLDOWN_DC);
-          waterPump.write(WATERPUMP_COOLDOWN_DC);
-        }
-        else
-        {
-          fan.write(0);
-          waterPump.write(0);
-        }
-        break;
+      // case engineOffState:
+      //   if (waterTemp >= 190)
+      //   {
+      //     fan.write(FAN_COOLDOWN_DC);
+      //     waterPump.write(WATERPUMP_COOLDOWN_DC);
+      //   }
+      //   else
+      //   {
+      //     fan.write(0);
+      //     waterPump.write(0);
+      //   }
+      //   break;
 
-      case coldRunningState:
-        waterPump.write(WATERPUMP_ACTIVE_DC);
-        fan.write(0);
-        break;
+      // case coldRunningState:
+      //   waterPump.write(WATERPUMP_ACTIVE_DC);
+      //   fan.write(0);
+      //   break;
 
-      case hotRunningState:
-        waterPump.write(WATERPUMP_ACTIVE_DC);
-        fan.write(FAN_ACTIVE_DC);
-        break;
+      // case hotRunningState:
+      //   waterPump.write(WATERPUMP_ACTIVE_DC);
+      //   fan.write(FAN_ACTIVE_DC);
+      //   break;
 
       default:
-        fan.write(FAN_ACTIVE_DC);
-        waterPump.write(WATERPUMP_ACTIVE_DC);
+        // fan.write(FAN_ACTIVE_DC);
+        // waterPump.write(WATERPUMP_ACTIVE_DC);
         break;
     }
   }
@@ -418,25 +418,25 @@ void parseCANmessage()
     }
     break;
 
-  case PE1_ID:
-    ECUTimer.reset();
-    rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
-    break;
+//   case PE1_ID:
+//     ECUTimer.reset();
+//     rpm = ((inMsg.data[1] << 8) + inMsg.data[0]);
+//     break;
 
-  case PE6_ID:
-  {
-    uint16_t newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
-    if (newTemp > 32767)
-    {
-      newTemp = newTemp - 65536;
-    }
-#ifdef FURY
-    waterTemp = ((newTemp / 10.0) * 1.8) + 32;
-#else
-    waterTemp = newTemp / 10.0;
-#endif
-    break;
-  }
+  // case PE6_ID:
+  // {
+  //   uint16_t newTemp = ((inMsg.data[5] << 8) + inMsg.data[4]);
+  //   if (newTemp > 32767)
+  //   {
+  //     newTemp = newTemp - 65536;
+  //   }
+  // #ifdef FURY
+  //   waterTemp = ((newTemp / 10.0) * 1.8) + 32;
+  // #else
+  //   waterTemp = newTemp / 10.0;
+  // #endif
+  //   break;
+  // }
 
   case DBW_SENSORS_ID:      // each value is 0 - 100 as an integer
     APPS1 = inMsg.data[0];
@@ -463,15 +463,15 @@ void sendStatusMsg()
     can0.write(statusMsg);
 
 #ifdef PRINT_STATUS
-    ser.printf("\n");
-    ser.printf("Water Temp:\t %f\n", waterTemp);
-    ser.printf("RPM:\t\t %d\n", rpm);
-    ser.printf("Water Pump DC:\t %f\n", waterPump.read());
-    ser.printf("Fan DC:\t\t %f\n", fan.read());
-    ser.printf("Starter DC:\t %f\n", starter.read());
+    // ser.printf("\n");
+    // ser.printf("Water Temp:\t %f\n", waterTemp);
+    // ser.printf("RPM:\t\t %d\n", rpm);
+    // ser.printf("Water Pump DC:\t %f\n", waterPump.read());
+    // ser.printf("Fan DC:\t\t %f\n", fan.read());
+    // ser.printf("Starter DC:\t %f\n", starter.read());
     ser.printf("CAN Status:\t %d\n", CANConnected);
     ser.printf("ECU Status:\t %d\n", ECUConnected);
-    ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
+    // ser.printf("State:\t\t %d, %s\n", state, stateNames[state]);
 
     ser.printf("\n");
     ser.printf("APPS1:\t\t %d\n", APPS1);
@@ -491,12 +491,16 @@ void upShift()
   ser.printf("\n---------- UPSHIFT ----------\n");
 #endif
 
-  sparkCut.write(0);
-  ThisThread::sleep_for(10);
+  // sparkCut.write(0);
+  // ThisThread::sleep_for(10);
+  // upShiftPin.write(1);
+  // ThisThread::sleep_for(UPSHIFT_TIME); //
+  // upShiftPin.write(0);
+  // sparkCut.write(1);
+
   upShiftPin.write(1);
-  ThisThread::sleep_for(UPSHIFT_TIME); //
+  ThisThread::sleep_for(5);
   upShiftPin.write(0);
-  sparkCut.write(1);
 }
 
 void downShift()
@@ -506,12 +510,15 @@ void downShift()
   ser.printf("\n---------- DOWNSHIFT ----------\n");
 #endif
 
-  sparkCut.write(0);
-  ThisThread::sleep_for(10);
+  // sparkCut.write(0);
+  // ThisThread::sleep_for(10);
+  // downShiftPin.write(1);
+  // ThisThread::sleep_for(DOWNSHIFT_TIME);
+  // downShiftPin.write(0);
+  // sparkCut.write(1);
   downShiftPin.write(1);
-  ThisThread::sleep_for(DOWNSHIFT_TIME);
+  ThisThread::sleep_for(5);
   downShiftPin.write(0);
-  sparkCut.write(1);
 }
 
 void halfShift()
@@ -524,7 +531,7 @@ void halfShift()
   upShiftPin.write(1);
   ThisThread::sleep_for(7);
   downShiftPin.write(1);
-  ThisThread::sleep_for(HALFSHIFT_TIME);
+  ThisThread::sleep_for(5);
   upShiftPin.write(0);
   downShiftPin.write(0);
 }
