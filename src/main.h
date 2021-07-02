@@ -39,9 +39,10 @@
 #define hotRunningState                 4
 
 // Shift times in milliseconds
-#define DOWNSHIFT_TIME                  200
-#define UPSHIFT_TIME                    150
-#define HALFSHIFT_TIME                  150
+// #define DOWNSHIFT_TIME                  200
+// #define UPSHIFT_TIME                    150
+// #define HALFSHIFT_TIME                  150
+#define SHIFT_PULSE                     5
 
 // ethrottle safety
 #define ETHROTTLE_MAX_ERROR_COUNT       10
