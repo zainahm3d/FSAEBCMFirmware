@@ -521,17 +521,17 @@ void downShift()
   downShiftPin.write(0);
 }
 
-void halfShift()
-{
+// void halfShift()
+// {
 
-#ifdef PRINT_STATUS
-  ser.printf("\n---------- HALFSHIFT ----------\n");
-#endif
+// #ifdef PRINT_STATUS
+//   ser.printf("\n---------- HALFSHIFT ----------\n");
+// #endif
 
-  upShiftPin.write(1);
-  ThisThread::sleep_for(7);
-  downShiftPin.write(1);
-  ThisThread::sleep_for(SHIFT_PULSE);
-  upShiftPin.write(0);
-  downShiftPin.write(0);
-}
+//   upShiftPin.write(1);
+//   ThisThread::sleep_for(7);
+//   downShiftPin.write(1);
+//   ThisThread::sleep_for(SHIFT_PULSE);
+//   upShiftPin.write(0);
+//   downShiftPin.write(0);
+// }
