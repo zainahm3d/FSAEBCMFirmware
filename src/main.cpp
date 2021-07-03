@@ -409,9 +409,9 @@ void parseCANmessage()
       downShift();
       break;
 
-    case 14:
-      halfShift();
-      break;
+    // case 14:
+    //   halfShift();
+    //   break;
 
     default:
       break;
