@@ -52,7 +52,6 @@ int main()
 
     if (can0.read(inMsg))
     {
-      Watchdog::get_instance().kick();
       parseCANmessage();
     }
   }
@@ -69,13 +68,6 @@ void initBCM()
 
   sendStatusThread.start(sendStatusMsg);
   updateStateThread.start(updateState);
-
-  // osThreadSetPriority(osThreadGetId(), osPriorityNormal1);
-
-  // when watchdog timer elapses without a kick, mcu will soft reset.
-  // the watchdog is kicked during the most critical code (ETC safety)
-  Watchdog::get_instance().start(5000);
-  Watchdog::get_instance().kick();
 }
 
 void beepMotors()
